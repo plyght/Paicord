@@ -47,7 +47,10 @@ struct DMsView: View {
       .padding(.vertical, 4)
     }
     .frame(maxWidth: .infinity)
+    #if os(macOS)
+    .background(.clear)
+    #else
     .background(theme.common.secondaryBackground.opacity(0.5))
-    .roundedCorners(radius: 10, corners: .topLeft)
+    #endif
   }
 }

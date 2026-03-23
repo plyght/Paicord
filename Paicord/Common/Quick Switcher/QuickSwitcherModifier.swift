@@ -273,18 +273,10 @@ struct QuickSwitcherView: View {
       }
     }
     .maxWidth(600)
-    .background(.ultraThinMaterial.blendMode(.darken))
-    .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .circular))
-    .overlay {
-      RoundedRectangle(cornerRadius: cornerRadius, style: .circular)
-        .strokeBorder(.black, lineWidth: 0.5)
-    }
-    .overlay {
-      RoundedRectangle(cornerRadius: cornerRadius, style: .circular)
-        .strokeBorder(.gray.opacity(0.4), lineWidth: 0.85)
-        .padding(0.5)
-    }
-    .shadow(color: .black.opacity(0.65), radius: 20, x: 0, y: 20)
+    .background(.ultraThickMaterial)
+    .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+    .glassEffect(.regular)
+    .shadow(color: .black.opacity(0.4), radius: 30, x: 0, y: 15)
     .task(id: query) {
       guard !query.isEmpty else {
         self.results = []

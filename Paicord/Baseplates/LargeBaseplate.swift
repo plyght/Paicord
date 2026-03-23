@@ -7,6 +7,7 @@
 //
 
 import DiscordModels
+import SwiftUI
 @_spi(Advanced) import SwiftUIIntrospect
 import SwiftUIX
 
@@ -15,7 +16,6 @@ struct LargeBaseplate: View {
   @Environment(\.gateway) var gw
   @Environment(\.appState) var appState
   @AppStorage("Paicord.ShowingMembersSidebar") var showingInspector = true
-  @Environment(\.theme) var theme
 
   @State var currentGuildStore: GuildStore? = nil
   @State var currentChannelStore: ChannelStore? = nil
@@ -32,22 +32,7 @@ struct LargeBaseplate: View {
           ProfileBar()
         }
         .toolbar(removing: .sidebarToggle)
-        .toolbar {
-          Group {
-            if columnVisibility != .detailOnly {
-              if let currentGuildStore {
-                Text(currentGuildStore.guild?.name ?? "Direct Messages")
-                  .font(.title2)
-                  .bold()
-              } else {
-                Text("Direct Messages")
-                  .font(.title2)
-                  .bold()
-              }
-            }
-          }
-          .minimumScaleFactor(0.5)
-        }
+        .navigationTitle(currentGuildStore?.guild?.name ?? "Direct Messages")
         .navigationSplitViewColumnWidth(min: 280, ideal: 310, max: 360)
 
     } detail: {
@@ -87,7 +72,6 @@ struct LargeBaseplate: View {
           } label: {
             Label("Toggle Sidebar", systemImage: "sidebar.left")
           }
-          .tint(theme.common.tertiaryButton)
         }
       }
     }

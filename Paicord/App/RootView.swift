@@ -68,7 +68,6 @@ struct RootView: View {
     }
     .environment(\.appState, appState)
     .focusedSceneValue(\.appState, appState)
-    .navigationTitle(Text(verbatim: ""))
     .animation(.default, value: gatewayStore.state.hashValue)
     .fontDesign(.rounded)
     .modifier(
@@ -123,10 +122,10 @@ struct RootView: View {
       // copy swiftui's windowStyle hidden title bar style if we are logging in (currentAccountID is nil)
       if gatewayStore.accounts.currentAccountID == nil {
         window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
+        window.toolbar?.isVisible = false
       } else {
         window.titleVisibility = .visible
-        window.titlebarAppearsTransparent = false
+        window.toolbar?.isVisible = true
       }
     }
   #endif

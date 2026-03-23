@@ -88,8 +88,6 @@ struct ProfileBar: View {
           Image(systemName: "gearshape.fill")
             .font(.title2)
             .padding(5)
-            .background(.ultraThinMaterial)
-            .clipShape(.circle)
         }
         .buttonStyle(.borderless)
       #elseif os(iOS)

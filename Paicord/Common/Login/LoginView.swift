@@ -90,9 +90,10 @@ struct LoginView: View {
             }
           }
           .padding(20)
-          .background(theme.common.tertiaryBackground.opacity(0.75))
-          .clipShape(.rounded)
-          .shadow(radius: 10)
+          .background(.ultraThinMaterial)
+          .clipShape(.rect(cornerRadius: 16, style: .continuous))
+          .glassEffect(.regular)
+          .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
           .padding(5)
           .transition(.scale(scale: 0.8).combined(with: .opacity))
         } else {

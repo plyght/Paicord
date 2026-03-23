@@ -169,6 +169,7 @@ struct ChatView: View {
               Image(systemName: "arrow.down")
                 .imageScale(.large)
                 .padding(8)
+                .glassEffect(.regular.interactive())
             #else
               Image(systemName: "arrow.down")
                 .tint(.primary)
@@ -178,9 +179,7 @@ struct ChatView: View {
             #endif
           }
           #if os(macOS)
-            .buttonStyle(.borderedProminent)
-            .buttonBorderShape(.circle)
-            .controlSize(.large)
+            .buttonStyle(.borderless)
           #else
             .buttonStyle(.borderless)
           #endif

@@ -90,7 +90,6 @@ struct PaicordApp: App {
     // if macos or ipados
     #if os(macOS) || os(iOS)
       #if canImport(Sparkle) && !DEBUG
-        .windowToolbarStyle(.unified)
         .commands {
           CommandGroup(after: .appInfo) {
             CheckForUpdatesView(updater: updaterController.updater)
@@ -111,6 +110,7 @@ struct PaicordApp: App {
             window.isRestorable = false
           }
       }
+      .windowStyle(.automatic)
     #endif
   }
 }

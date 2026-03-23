@@ -2,12 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>UIFileSharingEnabled</key>
-	<true/>
-	<key>UISupportsDocumentBrowser</key>
-	<true/>
-	<key>LSSupportsOpeningDocumentsInPlace</key>
-	<true/>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>
@@ -17,6 +11,8 @@
 	<key>SUScheduledCheckInterval</key>
 	<integer>43200</integer>
 	<key>UIDesignRequiresCompatibility</key>
+	<false/>
+	<key>UIFileSharingEnabled</key>
 	<true/>
 </dict>
 </plist>
