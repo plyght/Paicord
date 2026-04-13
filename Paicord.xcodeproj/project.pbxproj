@@ -7,12 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		CC000001300000000000VC01 /* VoiceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000001300000000000VF01 /* VoiceStore.swift */; };
-		CC000001300000000000VC02 /* AudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000001300000000000VF02 /* AudioManager.swift */; };
-		CC000001300000000000VC04 /* VoiceChannelUsersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000001300000000000VF04 /* VoiceChannelUsersView.swift */; };
-		CC000001300000000000VC05 /* VoiceChannelRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000001300000000000VF05 /* VoiceChannelRow.swift */; };
-		CC000001300000000000VC07 /* CallRingPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000001300000000000VF07 /* CallRingPlayer.swift */; };
-		CC000001300000000000VC08 /* CameraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000001300000000000VF08 /* CameraManager.swift */; };
 		5724CD6F2E733D0E00931FEF /* MFASheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5724CD6E2E733D0900931FEF /* MFASheet.swift */; };
 		572B694C2E7079FB00BCED00 /* PaicordLib in Frameworks */ = {isa = PBXBuildFile; productRef = 572B694B2E7079FB00BCED00 /* PaicordLib */; };
 		5783AA902E6B8F6500F73F6D /* MeshGradient in Frameworks */ = {isa = PBXBuildFile; productRef = 5783AA8F2E6B8F6500F73F6D /* MeshGradient */; };
@@ -178,12 +172,6 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		CC000001300000000000VF01 /* VoiceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceStore.swift; sourceTree = "<group>"; };
-		CC000001300000000000VF02 /* AudioManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioManager.swift; sourceTree = "<group>"; };
-		CC000001300000000000VF04 /* VoiceChannelUsersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceChannelUsersView.swift; sourceTree = "<group>"; };
-		CC000001300000000000VF05 /* VoiceChannelRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceChannelRow.swift; sourceTree = "<group>"; };
-		CC000001300000000000VF07 /* CallRingPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallRingPlayer.swift; sourceTree = "<group>"; };
-		CC000001300000000000VF08 /* CameraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraManager.swift; sourceTree = "<group>"; };
 		5724CD6E2E733D0900931FEF /* MFASheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MFASheet.swift; sourceTree = "<group>"; };
 		5783AA932E6B8FCD00F73F6D /* MeshGradient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshGradient.swift; sourceTree = "<group>"; };
 		578E1CE02E67780B00C6DEA3 /* GradientText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradientText.swift; sourceTree = "<group>"; };
@@ -918,7 +906,6 @@
 				AA5F76EC2F3EA50D00A7A003 /* Quick Switcher */,
 				57A55C542E7560B3005C8226 /* Sheets */,
 				AA9C81842E6667050086B1DA /* Utilities */,
-				CC000001300000000000VG01 /* Voice */,
 			);
 			path = Common;
 			sourceTree = "<group>";
@@ -1019,7 +1006,6 @@
 				AAAF797F2ED1E9ED004B5B3F /* ExternalBadgeStore.swift */,
 				AA79479D2EDC7B9400B7A1EE /* PresenceStore.swift */,
 				AA5F76EA2F3E5E1900A7A003 /* QuickSwitcherProviderStore.swift */,
-				CC000001300000000000VF01 /* VoiceStore.swift */,
 			);
 			path = Stores;
 			sourceTree = "<group>";
@@ -1031,18 +1017,6 @@
 				AAB50A4F2E9AA67C0048E8B0 /* ChatInputCommand.swift */,
 			);
 			path = Types;
-			sourceTree = "<group>";
-		};
-		CC000001300000000000VG01 /* Voice */ = {
-			isa = PBXGroup;
-			children = (
-				CC000001300000000000VF02 /* AudioManager.swift */,
-				CC000001300000000000VF04 /* VoiceChannelUsersView.swift */,
-				CC000001300000000000VF05 /* VoiceChannelRow.swift */,
-				CC000001300000000000VF07 /* CallRingPlayer.swift */,
-				CC000001300000000000VF08 /* CameraManager.swift */,
-			);
-			path = Voice;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1294,12 +1268,6 @@
 				AA47AF2E2EDEF1C7008A50C9 /* ChatSection.swift in Sources */,
 				AA10971B2E64C181005BC3D2 /* PaicordApp.swift in Sources */,
 				AA47AF2C2EDEF1BA008A50C9 /* VoiceVideoSection.swift in Sources */,
-				CC000001300000000000VC01 /* VoiceStore.swift in Sources */,
-				CC000001300000000000VC02 /* AudioManager.swift in Sources */,
-				CC000001300000000000VC04 /* VoiceChannelUsersView.swift in Sources */,
-				CC000001300000000000VC05 /* VoiceChannelRow.swift in Sources */,
-				CC000001300000000000VC07 /* CallRingPlayer.swift in Sources */,
-				CC000001300000000000VC08 /* CameraManager.swift in Sources */,
 				AA9F7A532EF9630F008BB452 /* AttachmentBar.swift in Sources */,
 				AA47AF302EDEF1CC008A50C9 /* NotificationsSection.swift in Sources */,
 				AAAF79802ED1E9F7004B5B3F /* ExternalBadgeStore.swift in Sources */,

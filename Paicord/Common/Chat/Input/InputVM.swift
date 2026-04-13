@@ -294,6 +294,12 @@ extension ChatView.InputBar {
               limit: 8,
               includeApplications: true
             )
+            try Task.checkCancellation()
+            let stillValid = await MainActor.run { () -> Bool in
+              guard let self else { return false }
+              return self.isSlashing && self.slashQuery == query
+            }
+            guard stillValid else { return }
             let index = try resp.decode()
             try Task.checkCancellation()
             await MainActor.run {

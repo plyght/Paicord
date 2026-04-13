@@ -500,6 +500,11 @@ import SwiftUIX
           }
 
           override func keyDown(with event: NSEvent) {
+            if hasMarkedText() {
+              super.keyDown(with: event)
+              return
+            }
+            let shiftPressed = event.modifierFlags.contains(.shift)
             if let vm = mentionVM, vm.isMentioning, !vm.mentionResults.isEmpty {
               switch event.keyCode {
               case 125:  // down arrow
@@ -508,7 +513,7 @@ import SwiftUIX
               case 126:  // up arrow
                 onMentionMove?(-1)
                 return
-              case 36, 48:  // return, tab
+              case 36 where !shiftPressed:  // return
                 onAcceptMention?()
                 return
               case 53:  // escape
@@ -525,7 +530,7 @@ import SwiftUIX
               case 126:  // up arrow
                 onSlashMove?(-1)
                 return
-              case 36, 48:  // return, tab
+              case 36 where !shiftPressed:  // return
                 onAcceptSlash?()
                 return
               case 53:  // escape
@@ -535,7 +540,6 @@ import SwiftUIX
               }
             }
             if event.keyCode == 36 {  // Return key
-              let shiftPressed = event.modifierFlags.contains(.shift)
               if !shiftPressed {
                 onSubmit?()
                 return

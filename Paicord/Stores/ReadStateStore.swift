@@ -22,6 +22,7 @@ class ReadStateStore: DiscordDataStore {
 
   func setGateway(_ gateway: GatewayStore?) {
     self.gateway = gateway
+    hydrateFromDisk()
     setupEventHandling()
   }
 
@@ -29,17 +30,21 @@ class ReadStateStore: DiscordDataStore {
 
   /// Channels with at least one unread message since the user's last ack.
   /// Tracked locally on top of READY-provided read states so the UI updates live.
-  var unreadChannels: Set<ChannelSnowflake> = []
+  private(set) var unreadChannels: Set<ChannelSnowflake> = []
 
   /// Per-channel mention counts that the current user is the target of.
-  var mentionCounts: [ChannelSnowflake: Int] = [:]
+  private(set) var mentionCounts: [ChannelSnowflake: Int] = [:]
 
   /// Per-channel last seen message id from incoming MESSAGE_CREATE events.
   /// Used to send a correct ack payload.
-  var latestMessageIds: [ChannelSnowflake: MessageSnowflake] = [:]
+  private(set) var latestMessageIds: [ChannelSnowflake: MessageSnowflake] = [:]
 
   /// Reverse index so aggregate queries don't need a loaded GuildStore.
-  var channelToGuild: [ChannelSnowflake: GuildSnowflake] = [:]
+  private(set) var channelToGuild: [ChannelSnowflake: GuildSnowflake] = [:]
+
+  var hasAnyUnread: Bool {
+    !unreadChannels.isEmpty || !mentionCounts.isEmpty
+  }
 
   /// Channels currently visible in some window. Populated by ChatView.
   @ObservationIgnored
@@ -89,6 +94,7 @@ class ReadStateStore: DiscordDataStore {
         unreadChannels.insert(channelId)
       }
     }
+    persistSnapshot()
   }
 
   private func handleMessageAcknowledge(
@@ -138,7 +144,7 @@ class ReadStateStore: DiscordDataStore {
     )
 
     // Unread tracking — respect "noMessages" override (still no badge then).
-    if level != .noMessages {
+    if level != .noMessages || isMention {
       unreadChannels.insert(channelId)
     }
 
@@ -146,6 +152,7 @@ class ReadStateStore: DiscordDataStore {
       mentionCounts[channelId, default: 0] += 1
       postMentionNotification(for: message)
     }
+    persistSnapshot()
   }
 
   // MARK: - Public Query API
@@ -229,6 +236,7 @@ class ReadStateStore: DiscordDataStore {
     if sendAck, let messageId {
       Task { await sendAckRequest(channelId: channelId, messageId: messageId) }
     }
+    persistSnapshot()
   }
 
   func markAllRead() {
@@ -370,6 +378,60 @@ class ReadStateStore: DiscordDataStore {
     if message.guild_id == nil { return true }
 
     return false
+  }
+
+  // MARK: - Persistence
+
+  private struct PersistedSnapshot: Codable {
+    var unreadChannels: [String]
+    var mentionCounts: [String: Int]
+    var latestMessageIds: [String: String]
+    var channelToGuild: [String: String]
+  }
+
+  private var persistenceKey: String? {
+    guard let userId = gateway?.user.currentUser?.id.rawValue else {
+      return nil
+    }
+    return "Paicord.ReadStateStore.\(userId)"
+  }
+
+  private func persistSnapshot() {
+    guard let key = persistenceKey else { return }
+    let snapshot = PersistedSnapshot(
+      unreadChannels: unreadChannels.map { $0.rawValue },
+      mentionCounts: mentionCounts.reduce(into: [:]) {
+        $0[$1.key.rawValue] = $1.value
+      },
+      latestMessageIds: latestMessageIds.reduce(into: [:]) {
+        $0[$1.key.rawValue] = $1.value.rawValue
+      },
+      channelToGuild: channelToGuild.reduce(into: [:]) {
+        $0[$1.key.rawValue] = $1.value.rawValue
+      }
+    )
+    guard let data = try? JSONEncoder().encode(snapshot) else { return }
+    UserDefaults.standard.set(data, forKey: key)
+  }
+
+  private func hydrateFromDisk() {
+    guard let key = persistenceKey,
+      let data = UserDefaults.standard.data(forKey: key),
+      let snapshot = try? JSONDecoder().decode(
+        PersistedSnapshot.self,
+        from: data
+      )
+    else { return }
+    unreadChannels = Set(snapshot.unreadChannels.map { ChannelSnowflake($0) })
+    mentionCounts = snapshot.mentionCounts.reduce(into: [:]) {
+      $0[ChannelSnowflake($1.key)] = $1.value
+    }
+    latestMessageIds = snapshot.latestMessageIds.reduce(into: [:]) {
+      $0[ChannelSnowflake($1.key)] = MessageSnowflake($1.value)
+    }
+    channelToGuild = snapshot.channelToGuild.reduce(into: [:]) {
+      $0[ChannelSnowflake($1.key)] = GuildSnowflake($1.value)
+    }
   }
 
   // MARK: - System notifications

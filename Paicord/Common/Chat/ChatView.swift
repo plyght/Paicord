@@ -175,6 +175,18 @@ struct ChatView: View {
 
   init(vm: ChannelStore) { self._vm = .init(initialValue: vm) }
 
+  private struct ChatMessageAnimations: ViewModifier {
+    let lastMessageKey: Int
+    let pendingCount: Int
+    let animateIncoming: Bool
+    let animatePending: Bool
+    func body(content: Content) -> some View {
+      content
+        .animation(animateIncoming ? .default : nil, value: lastMessageKey)
+        .animation(animatePending ? .default : nil, value: pendingCount)
+    }
+  }
+
   #if os(macOS)
     @FocusState private var isChatFocused: Bool
   #endif
@@ -202,6 +214,7 @@ struct ChatView: View {
       return vm.guildStore?.members[currentUserID]?.roles
     }()
 
+    let lastMessageKey: Int = orderedMessages.last?.id.rawValue.hashValue ?? 0
     let shouldAnimate =
       orderedMessages.last?.author?.id != currentUserID
     VStack(spacing: 20) {
@@ -264,11 +277,14 @@ struct ChatView: View {
           .id(vm.channelId)
       }
     #endif
-    .animation(
-      shouldAnimate && chatAnimatesMessages ? .default : nil,
-      value: orderedMessages.count
+    .modifier(
+      ChatMessageAnimations(
+        lastMessageKey: lastMessageKey,
+        pendingCount: pendingMessages.count,
+        animateIncoming: shouldAnimate && chatAnimatesMessages,
+        animatePending: chatAnimatesMessages
+      )
     )
-    .animation(chatAnimatesMessages ? .default : nil, value: pendingMessages.count)
     .scrollDismissesKeyboard(.interactively)
     .background(theme.common.secondaryBackground)
     .ignoresSafeArea(.keyboard, edges: .all)
@@ -277,39 +293,6 @@ struct ChatView: View {
     .toolbar {
       ToolbarItem(placement: .navigation) {
         ChannelHeader(vm: vm)
-      }
-      if vm.channel?.type == .dm || vm.channel?.type == .groupDm {
-        ToolbarItemGroup(placement: .primaryAction) {
-          Button {
-            Task {
-              await gw.voice.joinChannel(
-                channelId: vm.channelId,
-                guildId: nil,
-                channelName: vm.channel?.name,
-                guildName: nil,
-                selfVideo: false
-              )
-            }
-          } label: {
-            Image(systemName: "phone")
-          }
-          .disabled(gw.voice.connectedChannelId == vm.channelId)
-
-          Button {
-            Task {
-              await gw.voice.joinChannel(
-                channelId: vm.channelId,
-                guildId: nil,
-                channelName: vm.channel?.name,
-                guildName: nil,
-                selfVideo: true
-              )
-            }
-          } label: {
-            Image(systemName: "video")
-          }
-          .disabled(gw.voice.connectedChannelId == vm.channelId)
-        }
       }
     }
     .onReceive(

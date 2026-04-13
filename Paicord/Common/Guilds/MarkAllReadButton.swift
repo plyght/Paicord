@@ -10,8 +10,7 @@ struct MarkAllReadButton: View {
   @Environment(\.gateway) var gw
 
   private var hasAnyUnread: Bool {
-    !gw.readStates.unreadChannels.isEmpty
-      || !gw.readStates.mentionCounts.isEmpty
+    gw.readStates.hasAnyUnread
   }
 
   var body: some View {

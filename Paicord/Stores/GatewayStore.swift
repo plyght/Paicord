@@ -97,19 +97,6 @@ final class GatewayStore {
         switch event.data {
         case .ready(let readyData):
           handleReady(readyData)
-        case .voiceServerUpdate(let update):
-          Task { await voice.handleVoiceServerUpdate(update) }
-        case .voiceStateUpdate(let state):
-          if state.user_id == user.currentUser?.id {
-            voice.handleOwnVoiceStateUpdate(state)
-          }
-          voice.handleParticipantVoiceStateUpdate(state)
-        case .callCreate(let call):
-          handleCallCreate(call)
-        case .callUpdate(let call):
-          handleCallUpdate(call)
-        case .callDelete(let call):
-          handleCallDelete(call)
         default: break
         }
       }
@@ -130,7 +117,6 @@ final class GatewayStore {
     presence.setGateway(self)
     messageDrain.setGateway(self)
     switcher.setGateway(self)
-    voice.gateway = self
 
     // Update existing channel stores
     for channelStore in channels.values {
@@ -144,7 +130,6 @@ final class GatewayStore {
   }
 
   func resetStores() {
-    Task { await voice.disconnect() }
     user = .init()
     settings = .init()
     userGuildSettings = .init()
@@ -152,7 +137,6 @@ final class GatewayStore {
     presence = .init()
     messageDrain = .init()
     switcher = .init()
-    voice = .init()
     channels = [:]
     guilds = [:]
     subscribedGuilds = []
@@ -169,7 +153,6 @@ final class GatewayStore {
   var presence = PresenceStore()
   var messageDrain = MessageDrainStore()
   var switcher = QuickSwitcherProviderStore()
-  var voice = VoiceStore()
 
   private var channels: [ChannelSnowflake: ChannelStore] = [:]
   func getChannelStore(for id: ChannelSnowflake, from guild: GuildStore? = nil)
@@ -227,52 +210,17 @@ final class GatewayStore {
     }
   }
 
-  // MARK: - Call Tracking
-
-  var activeCall: ActiveCallInfo?
-
-  struct ActiveCallInfo {
-    var channelId: ChannelSnowflake
-    var messageId: MessageSnowflake
-    var region: String
-    var ringing: [UserSnowflake]
-  }
-
-  private func handleCallCreate(_ call: Gateway.CallCreate) {
-    activeCall = ActiveCallInfo(
-      channelId: call.channel_id,
-      messageId: call.message_id,
-      region: call.region,
-      ringing: call.ringing
-    )
-  }
-
-  private func handleCallUpdate(_ call: Gateway.CallUpdate) {
-    activeCall = ActiveCallInfo(
-      channelId: call.channel_id,
-      messageId: call.message_id,
-      region: call.region,
-      ringing: call.ringing
-    )
-  }
-
-  private func handleCallDelete(_ call: Gateway.CallDelete) {
-    if activeCall?.channelId == call.channel_id {
-      activeCall = nil
-    }
-  }
-
   // MARK: - Handlers
 
   private func handleReady(_ data: Gateway.Ready) {
-    // Send initial voice state (not in any channel)
+    // send voice states, temporary until paicord has proper voice handling
     Task {
       await self.gateway?.updateVoiceState(
         payload: .init(
           guild_id: nil,
           channel_id: nil,
-          self_mute: voice.isMuted,
-          self_deaf: voice.isDeafened,
+          self_mute: true,
+          self_deaf: true,
           self_video: false,
           preferred_region: nil,
           preferred_regions: nil,

@@ -23,6 +23,7 @@ extension ChatView {
     var vm: ChannelStore
     var canSend: Bool
     @State var inputVM: InputVM
+    @State private var isSending: Bool = false
     @ViewStorage private var isManualUpdate = false
 
     static func vm(for channel: ChannelStore) -> InputVM {
@@ -189,6 +190,12 @@ extension ChatView {
           inputVM.selectedFiles = filterUploadableURLs(files)
         })
       )
+      #if os(macOS)
+        .onDisappear {
+          inputVM.clearMention()
+          inputVM.clearSlash()
+        }
+      #endif
     }
 
     @ViewBuilder
@@ -709,7 +716,13 @@ extension ChatView {
             print("[InputBar] slash execute: no sessionId")
             return
           }
-          let nonce: MessageSnowflake = try! .makeFake(date: .now)
+          let nonce: MessageSnowflake
+          do {
+            nonce = try MessageSnowflake.makeFake(date: .now)
+          } catch {
+            await MainActor.run { appState.error = error }
+            return
+          }
           let data = SlashCommandInvocation.Data(
             version: command.version ?? command.id.rawValue,
             id: command.id,
@@ -733,7 +746,7 @@ extension ChatView {
             )
             try resp.guardSuccess()
           } catch {
-            print("[InputBar] slash execute failed:", error)
+            await MainActor.run { appState.error = error }
           }
         }
       }
@@ -844,16 +857,19 @@ extension ChatView {
     }
 
     private func sendMessage() {
+      guard !isSending else { return }
       let msg = inputVM.content.trimmingCharacters(in: .whitespacesAndNewlines)
       guard !msg.isEmpty || inputVM.uploadItems.isEmpty == false else {
         return
       }
       guard let channelId = appState.selectedChannel else { return }
+      isSending = true
       // create a copy of the vm
       let toSend = inputVM.copy()
       inputVM.reset()
       Task {
         gw.messageDrain.send(toSend, in: channelId)
+        await MainActor.run { isSending = false }
       }
     }
 
