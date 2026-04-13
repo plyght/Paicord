@@ -55,10 +55,7 @@ struct LargeBaseplate: View {
             }
             .frame(width: 251)
             .offset(x: showingInspector ? 0 : 251)
-            .animation(
-              .spring(response: 0.32, dampingFraction: 0.86),
-              value: showingInspector
-            )
+            .animation(.easeOut(duration: 0.25), value: showingInspector)
           }
           .environment(\.guildStore, currentGuildStore)
           .environment(\.channelStore, currentChannelStore)

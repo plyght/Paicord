@@ -227,11 +227,10 @@ struct ChatView: View {
       else { return }
       let immediate = (info["immediate"] as? Bool == true)
       guard self.isNearBottom || immediate else { return }
-      Task { @MainActor in
-        try? await Task.sleep(for: .milliseconds(16))
-        withAnimation(immediate ? .default : nil) {
-          self.scrollProxy?.scrollTo(Self.bottomSentinelId, anchor: .bottom)
-        }
+      var tx = Transaction()
+      tx.disablesAnimations = true
+      withTransaction(tx) {
+        self.scrollProxy?.scrollTo(Self.bottomSentinelId, anchor: .bottom)
       }
     }  // handle scroll to bottom event
     .onReceive(
