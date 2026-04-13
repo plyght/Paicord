@@ -18,6 +18,10 @@ import UInt128
   import Bionic
 #endif
 
+#if canImport(WatchKit)
+  import WatchKit
+#endif
+
 // Discord clients send a horrific header containing your host machine information,
 // this is used for anti-abuse systems. It is sent at IDENTIFY in gateway and with all API requests as
 // the `X-Super-Properties` header. This extension adds the extra data. The definition only has initializer
@@ -401,9 +405,16 @@ public enum SuperProperties {
   }
 
   public static func device_vendor_id() -> String? {
-    #if os(iOS) || os(watchOS)
+    #if os(iOS)
       DispatchQueue.main.sync {
         if let uuid = UIDevice.current.identifierForVendor {
+          return uuid.uuidString.uppercased()
+        }
+        return UUID().uuidString.uppercased()  // fallback
+      }
+    #elseif os(watchOS)
+      DispatchQueue.main.sync {
+        if let uuid = WKInterfaceDevice.current().identifierForVendor {
           return uuid.uuidString.uppercased()
         }
         return UUID().uuidString.uppercased()  // fallback
