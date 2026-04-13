@@ -17,8 +17,12 @@ extension MessageCell {
 
     @State private var editedPopover = false
     @State private var profileOpen = false
+    @State private var timestampText: String = ""
+    @State private var editedText: String? = nil
 
-    private var timestampText: String {
+    private static func computeTimestampText(
+      for message: DiscordChannel.Message
+    ) -> String {
       let date = message.timestamp.date
       if Calendar.current.isDateInToday(date) {
         return Self.timeFormatter.string(from: date)
@@ -29,7 +33,9 @@ extension MessageCell {
       }
     }
 
-    private var editedText: String? {
+    private static func computeEditedText(
+      for message: DiscordChannel.Message
+    ) -> String? {
       guard let edited = message.edited_timestamp?.date else { return nil }
       return Self.fullDateTimeFormatter.string(from: edited)
     }
@@ -72,31 +78,43 @@ extension MessageCell {
     }
 
     var body: some View {
-      if inline {
-        HStack(alignment: .top, spacing: 8) {
-          AvatarBalancing()
-            #if os(macOS)
-              .padding(.trailing, 4)  // balancing
-            #endif
+      Group {
+        if inline {
+          HStack(alignment: .top, spacing: 8) {
+            AvatarBalancing()
+              #if os(macOS)
+                .padding(.trailing, 4)  // balancing
+              #endif
 
-          MessageBody(message: message, channelStore: channelStore)
-        }
-      } else {
-        VStack(alignment: .leading, spacing: 4) {
-          replyView
-          HStack(alignment: .bottom, spacing: 8) {
-            MessageAuthor.Avatar(
-              message: message,
-              guildStore: channelStore.guildStore,
-              profileOpen: $profileOpen
-            )
-            #if os(macOS)
-              .padding(.trailing, 4)  // balancing
-            #endif
+            MessageBody(message: message, channelStore: channelStore)
+          }
+        } else {
+          VStack(alignment: .leading, spacing: 4) {
+            replyView
+            HStack(alignment: .bottom, spacing: 8) {
+              MessageAuthor.Avatar(
+                message: message,
+                guildStore: channelStore.guildStore,
+                profileOpen: $profileOpen
+              )
+              #if os(macOS)
+                .padding(.trailing, 4)  // balancing
+              #endif
 
-            userAndMessage
+              userAndMessage
+            }
           }
         }
+      }
+      .onAppear {
+        timestampText = Self.computeTimestampText(for: message)
+        editedText = Self.computeEditedText(for: message)
+      }
+      .onChange(of: message.timestamp) { _, _ in
+        timestampText = Self.computeTimestampText(for: message)
+      }
+      .onChange(of: message.edited_timestamp) { _, _ in
+        editedText = Self.computeEditedText(for: message)
       }
     }
 

@@ -137,8 +137,22 @@ extension MessageCell {
           if let fields = embed.fields, !fields.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
               // Separate inline and block fields
-              let inlineFields = fields.filter { $0.inline ?? false }
-              let blockFields = fields.filter { ($0.inline ?? false) == false }
+              let partitionedFields: (inline: [Embed.Field], block: [Embed.Field]) = {
+                var inlineOut: [Embed.Field] = []
+                var blockOut: [Embed.Field] = []
+                inlineOut.reserveCapacity(fields.count)
+                blockOut.reserveCapacity(fields.count)
+                for f in fields {
+                  if f.inline ?? false {
+                    inlineOut.append(f)
+                  } else {
+                    blockOut.append(f)
+                  }
+                }
+                return (inlineOut, blockOut)
+              }()
+              let inlineFields = partitionedFields.inline
+              let blockFields = partitionedFields.block
 
               if !inlineFields.isEmpty {
                 LazyVGrid(

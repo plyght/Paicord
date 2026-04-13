@@ -773,6 +773,9 @@ public actor DiscordCache {
         channelId: message.channel_id
       ) {
         self.messages[message.channel_id, default: []].append(message)
+        if let count = self.messages[message.channel_id]?.count, count > 500 {
+          self.messages[message.channel_id]?.removeFirst(count - 500)
+        }
       }
       if self.intents.contains(.guilds) {
         if let guildId = message.guild_id {

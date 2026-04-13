@@ -11,6 +11,8 @@ import PaicordLib
 import SwiftPrettyPrint
 import SwiftUIX
 
+private let sharedDecoder = JSONDecoder()
+
 // When it's time to add support for rich presence data from other apps and games, this will need reworking.
 
 @Observable
@@ -173,8 +175,7 @@ extension Optional: AppStorageConvertible where Wrapped == Gateway.Activity {
       self = nil
       return
     }
-    let decoder = JSONDecoder()
-    if let decoded = try? decoder.decode(Gateway.Activity.self, from: data) {
+    if let decoded = try? sharedDecoder.decode(Gateway.Activity.self, from: data) {
       self = .some(decoded)
     } else {
       self = nil

@@ -13,8 +13,12 @@ import SwiftUIX
 struct GuildView: View {
   var guild: GuildStore
   @Environment(\.theme) var theme
-  private var uncategorizedChannels: [DiscordChannel] {
-    guild.channels.values
+  @State private var uncategorizedChannels: [DiscordChannel] = []
+
+  private static func computeUncategorizedChannels(
+    from channels: [ChannelSnowflake: DiscordChannel]
+  ) -> [DiscordChannel] {
+    channels.values
       .filter { $0.parent_id == nil }
       .sorted { lhs, rhs in
         let lhsIsCategory = lhs.type == .guildCategory
@@ -61,6 +65,12 @@ struct GuildView: View {
     #else
     .background(theme.common.secondaryBackground.opacity(0.5))
     #endif
+    .onAppear {
+      uncategorizedChannels = Self.computeUncategorizedChannels(from: guild.channels)
+    }
+    .onChange(of: guild.channels) { _, new in
+      uncategorizedChannels = Self.computeUncategorizedChannels(from: new)
+    }
   }
 }
 

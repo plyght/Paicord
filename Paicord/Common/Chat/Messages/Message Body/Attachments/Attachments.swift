@@ -668,6 +668,7 @@ extension MessageCell {
           reader.startReading()
 
           var samples: [Float] = []
+          samples.reserveCapacity(1024 * 64)
 
           while let buffer = output.copyNextSampleBuffer(),
             let block = CMSampleBufferGetDataBuffer(buffer)
@@ -683,7 +684,7 @@ extension MessageCell {
               destination: &data
             )
 
-            samples.append(contentsOf: data.map { abs(Float($0)) })
+            for v in data { samples.append(abs(Float(v))) }
             CMSampleBufferInvalidate(buffer)
           }
 
@@ -692,11 +693,20 @@ extension MessageCell {
           // downsample
           let stride = max(1, samples.count / samplesCount)
           var waveform: [Float] = []
+          waveform.reserveCapacity(samples.count / stride + 1)
 
-          for i in Swift.stride(from: 0, to: samples.count, by: stride) {
-            let chunk = samples[i..<min(i + stride, samples.count)]
-            let avg = chunk.reduce(0, +) / Float(chunk.count)
-            waveform.append(avg)
+          var i = 0
+          let total = samples.count
+          while i < total {
+            let end = Swift.min(i + stride, total)
+            var sum: Float = 0
+            var j = i
+            while j < end {
+              sum += samples[j]
+              j += 1
+            }
+            waveform.append(sum / Float(end - i))
+            i = end
           }
 
           // normalise
@@ -887,10 +897,10 @@ extension MessageCell {
       #if os(iOS)
         func openDocuments() {
           // https://stackoverflow.com/a/72360825
-          let documentsUrl = FileManager.default.urls(
+          guard let documentsUrl = FileManager.default.urls(
             for: .documentDirectory,
             in: .userDomainMask
-          ).first!
+          ).first else { return }
           let sharedurl = documentsUrl.absoluteString.replacingOccurrences(
             of: "file://",
             with: "shareddocuments://"

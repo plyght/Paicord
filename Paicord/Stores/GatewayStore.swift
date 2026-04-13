@@ -33,7 +33,6 @@ final class GatewayStore {
 
   var state: GatewayState = .noConnection {
     didSet {
-      print("[GatewayStore] Gateway state changed to \(state)")
     }
   }
 
@@ -98,6 +97,19 @@ final class GatewayStore {
         switch event.data {
         case .ready(let readyData):
           handleReady(readyData)
+        case .voiceServerUpdate(let update):
+          Task { await voice.handleVoiceServerUpdate(update) }
+        case .voiceStateUpdate(let state):
+          if state.user_id == user.currentUser?.id {
+            voice.handleOwnVoiceStateUpdate(state)
+          }
+          voice.handleParticipantVoiceStateUpdate(state)
+        case .callCreate(let call):
+          handleCallCreate(call)
+        case .callUpdate(let call):
+          handleCallUpdate(call)
+        case .callDelete(let call):
+          handleCallDelete(call)
         default: break
         }
       }
@@ -106,7 +118,7 @@ final class GatewayStore {
     errorTask = Task { @MainActor in
       guard let gateway else { return }
       for await (error, buffer) in await gateway.eventFailures {
-        print("[GatewayStore Error]", String(buffer: buffer), error)
+        _ = (error, buffer)
       }
     }
 
@@ -118,6 +130,7 @@ final class GatewayStore {
     presence.setGateway(self)
     messageDrain.setGateway(self)
     switcher.setGateway(self)
+    voice.gateway = self
 
     // Update existing channel stores
     for channelStore in channels.values {
@@ -131,6 +144,7 @@ final class GatewayStore {
   }
 
   func resetStores() {
+    Task { await voice.disconnect() }
     user = .init()
     settings = .init()
     userGuildSettings = .init()
@@ -138,6 +152,7 @@ final class GatewayStore {
     presence = .init()
     messageDrain = .init()
     switcher = .init()
+    voice = .init()
     channels = [:]
     guilds = [:]
     subscribedGuilds = []
@@ -154,6 +169,7 @@ final class GatewayStore {
   var presence = PresenceStore()
   var messageDrain = MessageDrainStore()
   var switcher = QuickSwitcherProviderStore()
+  var voice = VoiceStore()
 
   private var channels: [ChannelSnowflake: ChannelStore] = [:]
   func getChannelStore(for id: ChannelSnowflake, from guild: GuildStore? = nil)
@@ -182,9 +198,6 @@ final class GatewayStore {
   func getGuildStore(for id: GuildSnowflake) -> GuildStore {
     defer {
       if !subscribedGuilds.contains(id) {
-        print(
-          "[GatewayStore] Subscribing for guild store to \(id.rawValue)"
-        )
         subscribedGuilds.insert(id)
         Task {
           await gateway?.updateGuildSubscriptions(
@@ -200,7 +213,6 @@ final class GatewayStore {
                 )
               ])
           )
-          print("[GatewayStore] Subscribed to guild \(id.rawValue)")
         }
       }
     }
@@ -215,17 +227,52 @@ final class GatewayStore {
     }
   }
 
+  // MARK: - Call Tracking
+
+  var activeCall: ActiveCallInfo?
+
+  struct ActiveCallInfo {
+    var channelId: ChannelSnowflake
+    var messageId: MessageSnowflake
+    var region: String
+    var ringing: [UserSnowflake]
+  }
+
+  private func handleCallCreate(_ call: Gateway.CallCreate) {
+    activeCall = ActiveCallInfo(
+      channelId: call.channel_id,
+      messageId: call.message_id,
+      region: call.region,
+      ringing: call.ringing
+    )
+  }
+
+  private func handleCallUpdate(_ call: Gateway.CallUpdate) {
+    activeCall = ActiveCallInfo(
+      channelId: call.channel_id,
+      messageId: call.message_id,
+      region: call.region,
+      ringing: call.ringing
+    )
+  }
+
+  private func handleCallDelete(_ call: Gateway.CallDelete) {
+    if activeCall?.channelId == call.channel_id {
+      activeCall = nil
+    }
+  }
+
   // MARK: - Handlers
 
   private func handleReady(_ data: Gateway.Ready) {
-    // send voice states, temporary until paicord has proper voice handling
+    // Send initial voice state (not in any channel)
     Task {
       await self.gateway?.updateVoiceState(
         payload: .init(
           guild_id: nil,
           channel_id: nil,
-          self_mute: true,
-          self_deaf: true,
+          self_mute: voice.isMuted,
+          self_deaf: voice.isDeafened,
           self_video: false,
           preferred_region: nil,
           preferred_regions: nil,
@@ -239,17 +286,11 @@ final class GatewayStore {
 
     // if we have subscribed guilds, we need to clear out non-focused channel stores
     guard self.subscribedGuilds.isEmpty == false else { return }
-    print(
-      "[GatewayStore] Reconnected, resubscribing to previously subscribed guilds."
-    )
     let channelIds = PaicordAppState.instances.compactMap(
       \.value.selectedChannel
     )
     channels = channels.filter { channelIds.contains($0.key) }
     if let channel = channels.values.first {
-      print(
-        "[GatewayStore] Refetching messages on behalf of focused channel \(channel.channelId.rawValue)."
-      )
       channel.messages.removeAll()
       Task { @MainActor in
         defer {
@@ -288,9 +329,6 @@ final class GatewayStore {
     // remove guilds that don't exist anymore, also remove their guildstores and any of their channelstores
     for (guildId, guildStore) in guilds {
       if !existingGuildIds.contains(guildId) {
-        print(
-          "[GatewayStore] Removing guild store for non-existent guild \(guildId.rawValue)."
-        )
         // remove their channels from channel stores
         for channelId in guildStore.channels.keys {
           channels.removeValue(forKey: channelId)  // only really removes anything if the server that disappeared had a focused channel
@@ -301,8 +339,9 @@ final class GatewayStore {
     }
 
     // repopulate guildstores
+    let guildMap = Dictionary(uniqueKeysWithValues: data.guilds.map { ($0.id, $0) })
     for guildStore in self.guilds.values {
-      if let guild = data.guilds.first(where: { $0.id == guildStore.guildId }) {
+      if let guild = guildMap[guildStore.guildId] {
         guildStore.populate(with: guild)
       }
     }

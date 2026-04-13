@@ -90,7 +90,7 @@ class MessageDrainStore: DiscordDataStore {
       guard let self else { return }
       defer { self.messageSendQueueTask = nil }
       guard !self.messageTasks.isEmpty else { return }
-      let (id, task) = self.messageTasks.first!
+      guard let (id, task) = self.messageTasks.first else { return }
       do {
         try await task()
         self.messageTasks.removeValue(forKey: id)

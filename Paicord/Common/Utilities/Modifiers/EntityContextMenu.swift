@@ -53,26 +53,8 @@ struct EntityContextMenu<Entity>: ViewModifier {
   @ViewBuilder
   func messageContextMenu(message: DiscordChannel.Message) -> some View {
     if hasPermission(.addReactions) {
-      let quickEmojis: [String] = {
-        let recent = RecentReactionsStore.shared.recent
-        var seen = Set<String>()
-        var out: [String] = []
-        for e in recent + QuickReactionPicker.defaults where seen.insert(e).inserted {
-          out.append(e)
-          if out.count == 6 { break }
-        }
-        return out
-      }()
-      let appliedSet: Set<String> = {
-        guard let channel,
-          let reactions = channel.reactions[message.id]
-        else { return [] }
-        var out: Set<String> = []
-        for (emoji, reaction) in reactions where reaction.selfReacted {
-          if emoji.id == nil, let name = emoji.name { out.insert(name) }
-        }
-        return out
-      }()
+      let quickEmojis = computeQuickEmojis()
+      let appliedSet = computeAppliedReactions(for: message)
       Picker(
         "Reactions",
         selection: Binding<String>(
@@ -375,6 +357,29 @@ struct EntityContextMenu<Entity>: ViewModifier {
   }
 
   // Helpers
+
+  func computeQuickEmojis() -> [String] {
+    let recent = RecentReactionsStore.shared.recent
+    var seen = Set<String>()
+    var out: [String] = []
+    out.reserveCapacity(6)
+    for e in recent + QuickReactionPicker.defaults where seen.insert(e).inserted {
+      out.append(e)
+      if out.count == 6 { break }
+    }
+    return out
+  }
+
+  func computeAppliedReactions(for message: DiscordChannel.Message) -> Set<String> {
+    guard let channel,
+      let reactions = channel.reactions[message.id]
+    else { return [] }
+    var out: Set<String> = []
+    for (emoji, reaction) in reactions where reaction.selfReacted {
+      if emoji.id == nil, let name = emoji.name { out.insert(name) }
+    }
+    return out
+  }
 
   func messageIsFromSelf(_ msg: DiscordChannel.Message) -> Bool {
     guard let currentUserID = gw.user.currentUser?.id else {

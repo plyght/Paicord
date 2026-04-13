@@ -45,6 +45,8 @@ extension ChatView.InputBar {
       var mentionQuery: String = ""
       var mentionResults: [MentionCandidate] = []
       var mentionSelectedIndex: Int = 0
+      @ObservationIgnored
+      var mentionSearchTask: Task<Void, Never>? = nil
 
       @ObservationIgnored
       var acceptMentionFromUI: (() -> Void)? = nil
@@ -54,6 +56,8 @@ extension ChatView.InputBar {
       }
 
       func clearMention() {
+        mentionSearchTask?.cancel()
+        mentionSearchTask = nil
         mentionTriggerRange = NSRange(location: NSNotFound, length: 0)
         mentionQuery = ""
         mentionResults = []
@@ -104,9 +108,19 @@ extension ChatView.InputBar {
           length: clamped - atRange.location
         )
         mentionQuery = query
-        mentionResults = searchMembers(query: query)
-        if mentionSelectedIndex >= mentionResults.count {
-          mentionSelectedIndex = 0
+        mentionSearchTask?.cancel()
+        let pending = query
+        mentionSearchTask = Task { [weak self] in
+          try? await Task.sleep(for: .milliseconds(120))
+          if Task.isCancelled { return }
+          guard let self else { return }
+          await MainActor.run {
+            guard self.isMentioning, self.mentionQuery == pending else { return }
+            self.mentionResults = self.searchMembers(query: pending)
+            if self.mentionSelectedIndex >= self.mentionResults.count {
+              self.mentionSelectedIndex = 0
+            }
+          }
         }
       }
 
@@ -379,57 +393,35 @@ extension ChatView.InputBar {
       var selectedPhotos: [PhotosPickerItem] = [] {
         didSet {
           // this needs to figure out what items were added and removed from selectedPhotos and sync uploadItems accordingly
-          let uploadItemsPhotoItems = uploadItems.compactMap {
-            item -> PhotosPickerItem? in
+          let existingPickerSet: Set<PhotosPickerItem> = Set(
+            uploadItems.compactMap { item -> PhotosPickerItem? in
+              switch item {
+              case .pickerItem(_, let photoItem): return photoItem
+              default: return nil
+              }
+            }
+          )
+          let selectedSet: Set<PhotosPickerItem> = Set(selectedPhotos)
+
+          var next: [UploadItem] = uploadItems.filter { item in
             switch item {
             case .pickerItem(_, let photoItem):
-              return photoItem
+              return selectedSet.contains(photoItem)
             default:
-              return nil
+              return true
             }
           }
 
-          // find added items
-          for photoItem in selectedPhotos {
-            if uploadItemsPhotoItems.contains(photoItem) == false {
-              let uploadItem = UploadItem.pickerItem(
-                id: UUID(),
-                item: photoItem
-              )
-              uploadItems.append(uploadItem)
-            }
+          for photoItem in selectedPhotos
+          where existingPickerSet.contains(photoItem) == false {
+            next.append(.pickerItem(id: UUID(), item: photoItem))
           }
 
-          // remove deleted items
-          for uploadItem in uploadItems {
-            switch uploadItem {
-            case .pickerItem(_, let photoItem):
-              if selectedPhotos.contains(photoItem) == false {
-                if let index = uploadItems.firstIndex(of: uploadItem) {
-                  uploadItems.remove(at: index)
-                }
-              }
-            default: continue
-            }
+          if next.count > 10 {
+            next = Array(next.prefix(10))
           }
 
-          // if the addition of new photos caused uploadItems to exceed 10, trim it
-          if uploadItems.count > 10 {
-            uploadItems = Array(uploadItems.prefix(10))
-          }
-
-          // prune selected photos again
-          for uploadItem in uploadItems {
-            switch uploadItem {
-            case .pickerItem(_, let photoItem):
-              if selectedPhotos.contains(photoItem) == false {
-                if let index = uploadItems.firstIndex(of: uploadItem) {
-                  uploadItems.remove(at: index)
-                }
-              }
-            default: continue
-            }
-          }
+          uploadItems = next
         }
       }
 

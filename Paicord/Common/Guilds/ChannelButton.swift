@@ -27,6 +27,20 @@ struct ChannelButton: View {
     gw.readStates.hasUnread(for: channel.id) ? .semibold : .regular
   }
 
+  private var recipientJoinedName: String? {
+    guard let recipients = channel.recipients else { return nil }
+    var parts: [String] = []
+    parts.reserveCapacity(recipients.count)
+    for r in recipients {
+      parts.append(r.global_name ?? r.username)
+    }
+    return parts.joined(separator: ", ")
+  }
+
+  private func displayName(_ fallback: String) -> String {
+    channel.name ?? recipientJoinedName ?? fallback
+  }
+
   var body: some View {
     // switch channel type
     switch channel.type {
@@ -43,11 +57,7 @@ struct ChannelButton: View {
             .profileShowsAvatarDecoration()
             .padding(2)
           }
-          Text(
-            channel.name ?? channel.recipients?.map({
-              $0.global_name ?? $0.username
-            }).joined(separator: ", ") ?? "Unknown Channel"
-          )
+          Text(displayName("Unknown Channel"))
           .fontWeight(nameWeight)
           Spacer(minLength: 4)
           unreadBadge
@@ -123,11 +133,7 @@ struct ChannelButton: View {
             }
             .aspectRatio(1, contentMode: .fit)
           }
-          Text(
-            channel.name ?? channel.recipients?.map({
-              $0.global_name ?? $0.username
-            }).joined(separator: ", ") ?? "Unknown Group DM"
-          )
+          Text(displayName("Unknown Group DM"))
           .fontWeight(nameWeight)
           Spacer(minLength: 4)
           unreadBadge
@@ -173,18 +179,10 @@ struct ChannelButton: View {
       }
       .tint(.primary)
     case .guildVoice:
-      textChannelButton { _ in
-        HStack {
-          Image(systemName: "speaker.wave.2.fill")
-            .imageScale(.medium)
-          Text(channel.name ?? "unknown")
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .minHeight(35)
-        .padding(.horizontal, 12)
-      }
-      .tint(.primary)
-      .disabled(true)
+      VoiceChannelRow(
+        channel: channel,
+        channels: channels
+      )
     default:
       textChannelButton { _ in
         HStack {

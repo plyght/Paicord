@@ -99,7 +99,6 @@ struct MarkdownText: View, Equatable {
   }
 
   private var renderSignature: RenderSignature {
-    let gw = GatewayStore.shared
     //    print(
     //      content,
     //      renderer.blocks,
@@ -117,10 +116,10 @@ struct MarkdownText: View, Equatable {
       sig = RenderSignature(
         content: content,
         blocks: renderer.blocks,
-        userCount: gw.user.users.count,
-        memberCount: channelStore?.guildStore?.members.count,
-        roleCount: channelStore?.guildStore?.roles.count,
-        channelCount: channelStore?.guildStore?.channels.count,
+        userCount: meta.mentions?.count,
+        memberCount: meta.mentions?.count,
+        roleCount: meta.mention_roles?.count,
+        channelCount: nil,
         dynamicType: dynamicTypeSizeStorage,
         themeID: theme.id
       )
@@ -1164,12 +1163,16 @@ private enum FontHelpers {
     string.enumerateAttribute(.font, in: full, options: []) { value, range, _ in
       #if os(macOS)
         let current: NSFont =
-          (value as? NSFont) ?? (preferredBodyFont() as! NSFont)
+          (value as? NSFont)
+          ?? (preferredBodyFont() as? NSFont
+            ?? NSFont.systemFont(ofSize: NSFont.systemFontSize))
         let updated = withTrait(trait, of: current)
         string.addAttribute(.font, value: updated, range: range)
       #else
         let current: UIFont =
-          (value as? UIFont) ?? (preferredBodyFont() as! UIFont)
+          (value as? UIFont)
+          ?? (preferredBodyFont() as? UIFont
+            ?? UIFont.systemFont(ofSize: UIFont.systemFontSize))
         let updated = withTrait(trait, of: current)
         string.addAttribute(.font, value: updated, range: range)
       #endif
@@ -1185,12 +1188,16 @@ private enum FontHelpers {
     string.enumerateAttribute(.font, in: full, options: []) { value, range, _ in
       #if os(macOS)
         let current: NSFont =
-          (value as? NSFont) ?? (preferredBodyFont() as! NSFont)
+          (value as? NSFont)
+          ?? (preferredBodyFont() as? NSFont
+            ?? NSFont.systemFont(ofSize: NSFont.systemFontSize))
         let updated = headingFont(from: current, level: level)
         string.addAttribute(.font, value: updated, range: range)
       #else
         let current: UIFont =
-          (value as? UIFont) ?? (preferredBodyFont() as! UIFont)
+          (value as? UIFont)
+          ?? (preferredBodyFont() as? UIFont
+            ?? UIFont.systemFont(ofSize: UIFont.systemFontSize))
         let updated = headingFont(from: current, level: level)
         string.addAttribute(.font, value: updated, range: range)
       #endif
@@ -1565,7 +1572,13 @@ extension MarkdownRendererVM {
   )
     -> NSAttributedString
   {
-    let contextFont = attributes[.font] as! AppKitOrUIKitFont
+    let contextFont: AppKitOrUIKitFont = (attributes[.font] as? AppKitOrUIKitFont) ?? {
+      #if os(macOS)
+        return NSFont.systemFont(ofSize: NSFont.systemFontSize)
+      #else
+        return UIFont.systemFont(ofSize: UIFont.systemFontSize)
+      #endif
+    }()
     let attachment = EmojiTextAttachment(
       url: emoji.url,
       size: emoji.size,

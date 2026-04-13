@@ -433,7 +433,7 @@ extension Theming {
 }
 
 #Playground {
-  let theme = Theming.defaultThemes.first!
+  guard let theme = Theming.defaultThemes.first else { return }
   let encoder = JSONEncoder()
   encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
   let data = try! encoder.encode(theme)

@@ -24,7 +24,149 @@ struct ChatView: View {
   /// Snapshot of `last_acked_id` taken when this channel was first opened,
   /// so a new-message divider stays put while the user is reading.
   @State private var dividerAfterMessageId: MessageSnowflake? = nil
+  private var blocked: Set<UserSnowflake> {
+    Self.computeBlocked(from: gw.user.relationships)
+  }
   private static let bottomSentinelId: String = "__paicord_bottom_sentinel__"
+
+  private static func computeBlocked(
+    from relationships: [UserSnowflake: DiscordRelationship]
+  ) -> Set<UserSnowflake> {
+    var s = Set<UserSnowflake>()
+    for (id, rel) in relationships
+    where rel.type == .blocked || rel.user_ignored {
+      s.insert(id)
+    }
+    return s
+  }
+
+  @ViewBuilder
+  private func messageRow(
+    msg: DiscordChannel.Message,
+    prior: DiscordChannel.Message?,
+    currentUserID: UserSnowflake?,
+    userRoles: [RoleSnowflake]?
+  ) -> some View {
+    let authorId = msg.author?.id
+    let isBlocked = authorId.map { blocked.contains($0) } ?? false
+    if !isBlocked {
+      let showDivider: Bool = {
+        guard let dividerAfterMessageId, let prior else { return false }
+        return prior.id.rawValue == dividerAfterMessageId.rawValue
+          && msg.id.rawValue > dividerAfterMessageId.rawValue
+      }()
+      if showDivider {
+        NewMessagesDivider()
+      }
+      MessageCell(
+        for: msg,
+        prior: prior,
+        channel: vm,
+        currentUserID: currentUserID,
+        currentUserRoles: userRoles
+      )
+    }
+  }
+
+  @ViewBuilder
+  private func pendingMessageRow(
+    _ tuple: (Payloads.CreateMessage, Payloads.CreateMessage?, DiscordChannel.Message?)
+  ) -> some View {
+    let message = tuple.0
+    let priorPending = tuple.1
+    let priorDelivered = tuple.2
+    if let priorPending {
+      SendMessageCell(for: message, prior: priorPending)
+    } else if let priorDelivered {
+      SendMessageCell(for: message, prior: priorDelivered)
+    } else {
+      SendMessageCell(
+        for: message,
+        prior: Optional<DiscordChannel.Message>.none
+      )
+    }
+  }
+
+  @ViewBuilder
+  private func messagesStack(
+    orderedMessages: [DiscordChannel.Message],
+    pendingPairs: [(Payloads.CreateMessage, Payloads.CreateMessage?, DiscordChannel.Message?)],
+    currentUserID: UserSnowflake?,
+    userRoles: [RoleSnowflake]?
+  ) -> some View {
+    if !vm.messages.isEmpty {
+      if vm.hasMoreHistory && vm.hasPermission(.readMessageHistory) {
+        EmptyView()
+      } else {
+        if vm.hasPermission(.readMessageHistory) {
+          ChatHeaders.WelcomeStartOfChannelHeader()
+        } else {
+          ChatHeaders.NoHistoryPermissionHeader()
+        }
+      }
+    }
+
+    let pairs: [(DiscordChannel.Message, DiscordChannel.Message?)] = {
+      var out: [(DiscordChannel.Message, DiscordChannel.Message?)] = []
+      out.reserveCapacity(orderedMessages.count)
+      var prior: DiscordChannel.Message? = nil
+      for msg in orderedMessages {
+        out.append((msg, prior))
+        prior = msg
+      }
+      return out
+    }()
+
+    ForEach(pairs, id: \.0.id) { msg, prior in
+      messageRow(
+        msg: msg,
+        prior: prior,
+        currentUserID: currentUserID,
+        userRoles: userRoles
+      )
+    }
+
+    ForEach(0..<pendingPairs.count, id: \.self) { idx in
+      pendingMessageRow(pendingPairs[idx])
+    }
+
+    Color.clear
+      .frame(height: 1)
+      .id(Self.bottomSentinelId)
+  }
+
+  @ViewBuilder
+  private var scrollToBottomOverlay: some View {
+    if !isNearBottom {
+      Button {
+        NotificationCenter.default.post(
+          name: .chatViewShouldScrollToBottom,
+          object: ["channelId": vm.channelId, "immediate": true]
+        )
+      } label: {
+        scrollToBottomIcon
+      }
+      .buttonStyle(.borderless)
+      .padding()
+      .transition(.blurReplace.animation(.default))
+    }
+  }
+
+  @ViewBuilder
+  private var scrollToBottomIcon: some View {
+    #if os(macOS)
+      Image(systemName: "arrow.down")
+        .imageScale(.large)
+        .padding(8)
+        .glassEffect(.regular.interactive())
+    #else
+      Image(systemName: "arrow.down")
+        .tint(.primary)
+        .imageScale(.large)
+        .padding(8)
+        .background(.ultraThinMaterial, in: .circle)
+    #endif
+  }
 
   var drain: MessageDrainStore { gw.messageDrain }
 
@@ -40,15 +182,21 @@ struct ChatView: View {
   var body: some View {
     let orderedMessages = vm.messages.values
     let pendingMessages = drain.pendingMessages[vm.channelId, default: [:]]
-    let currentUserID = gw.user.currentUser?.id
-    let blocked: Set<UserSnowflake> = {
-      var s = Set<UserSnowflake>()
-      for (id, rel) in gw.user.relationships
-      where rel.type == .blocked || rel.user_ignored {
-        s.insert(id)
+    let pendingList: [Payloads.CreateMessage] = Array(pendingMessages.values)
+    let pendingPairs: [(Payloads.CreateMessage, Payloads.CreateMessage?, DiscordChannel.Message?)] = {
+      var out: [(Payloads.CreateMessage, Payloads.CreateMessage?, DiscordChannel.Message?)] = []
+      out.reserveCapacity(pendingList.count)
+      let fallback = orderedMessages.last
+      for (i, m) in pendingList.enumerated() {
+        if pendingList.count > 1 && i > 0 {
+          out.append((m, pendingList[i - 1], nil))
+        } else {
+          out.append((m, nil, fallback))
+        }
       }
-      return s
+      return out
     }()
+    let currentUserID = gw.user.currentUser?.id
     let userRoles: [RoleSnowflake]? = {
       guard let currentUserID else { return nil }
       return vm.guildStore?.members[currentUserID]?.roles
@@ -60,86 +208,12 @@ struct ChatView: View {
       ScrollViewReader { proxy in
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 0) {
-          if !vm.messages.isEmpty {
-            if vm.hasMoreHistory && vm.hasPermission(.readMessageHistory) {
-              //                PlaceholderMessageSet()
-              //                  .onAppear {
-              //                    vm.tryFetchMoreMessageHistory()
-              //                  }
-            } else {
-              if vm.hasPermission(.readMessageHistory) {
-                ChatHeaders.WelcomeStartOfChannelHeader()
-              } else {
-                ChatHeaders.NoHistoryPermissionHeader()
-              }
-            }
-          }
-
-          let pairs: [(DiscordChannel.Message, DiscordChannel.Message?)] = {
-            var out: [(DiscordChannel.Message, DiscordChannel.Message?)] = []
-            out.reserveCapacity(orderedMessages.count)
-            var prior: DiscordChannel.Message? = nil
-            for msg in orderedMessages {
-              out.append((msg, prior))
-              prior = msg
-            }
-            return out
-          }()
-
-          ForEach(pairs, id: \.0.id) { msg, prior in
-            if msg.author?.id == nil || !blocked.contains(msg.author!.id) {
-              if let dividerAfterMessageId,
-                let prior,
-                prior.id.rawValue == dividerAfterMessageId.rawValue,
-                msg.id.rawValue > dividerAfterMessageId.rawValue
-              {
-                NewMessagesDivider()
-              }
-              MessageCell(
-                for: msg,
-                prior: prior,
-                channel: vm,
-                currentUserID: currentUserID,
-                currentUserRoles: userRoles
-              )
-            }
-          }
-
-          //            if !vm.messages.isEmpty {
-          //              if !vm.hasLatestMessages && vm.hasPermission(.readMessageHistory) {
-          //                PlaceholderMessageSet()
-          //                  .onAppear {
-          //                    vm.tryFetchMoreMessageHistory()
-          //                  }
-          //              }
-          //            } else {
-          ForEach(pendingMessages.values) { message in
-            // if there is only one message, there is no prior. use the latest message from channelstore
-            if pendingMessages.count > 1,
-              let messageIndex = pendingMessages.values.firstIndex(where: {
-                $0.nonce == message.nonce
-              }),
-              messageIndex > 0
-            {
-              let priorMessage = pendingMessages.values[messageIndex - 1]
-              SendMessageCell(for: message, prior: priorMessage)
-            } else if let latestMessage = orderedMessages.last {
-              // if there is a prior message from the channel store, use that
-              SendMessageCell(for: message, prior: latestMessage)
-            } else {
-              // no prior message
-              SendMessageCell(
-                for: message,
-                prior: Optional<DiscordChannel.Message>.none
-              )
-            }
-          }
-          //          }
-
-          // message drain view, represents messages being sent etc
-          Color.clear
-            .frame(height: 1)
-            .id(Self.bottomSentinelId)
+          messagesStack(
+            orderedMessages: Array(orderedMessages),
+            pendingPairs: pendingPairs,
+            currentUserID: currentUserID,
+            userRoles: userRoles
+          )
         }
         .scrollTargetLayout()
       }
@@ -175,34 +249,7 @@ struct ChatView: View {
       .bottomAnchored()
       .maxHeight(.infinity)
       .overlay(alignment: .bottomTrailing) {
-        if !isNearBottom {
-          Button(action: {
-            NotificationCenter.default.post(
-              name: .chatViewShouldScrollToBottom,
-              object: ["channelId": vm.channelId, "immediate": true]
-            )
-          }) {
-            #if os(macOS)
-              Image(systemName: "arrow.down")
-                .imageScale(.large)
-                .padding(8)
-                .glassEffect(.regular.interactive())
-            #else
-              Image(systemName: "arrow.down")
-                .tint(.primary)
-                .imageScale(.large)
-                .padding(8)
-                .background(.ultraThinMaterial, in: .circle)
-            #endif
-          }
-          #if os(macOS)
-            .buttonStyle(.borderless)
-          #else
-            .buttonStyle(.borderless)
-          #endif
-          .padding()
-          .transition(.blurReplace.animation(.default))
-        }
+        scrollToBottomOverlay
       }
       }  // ScrollViewReader
 
@@ -230,6 +277,39 @@ struct ChatView: View {
     .toolbar {
       ToolbarItem(placement: .navigation) {
         ChannelHeader(vm: vm)
+      }
+      if vm.channel?.type == .dm || vm.channel?.type == .groupDm {
+        ToolbarItemGroup(placement: .primaryAction) {
+          Button {
+            Task {
+              await gw.voice.joinChannel(
+                channelId: vm.channelId,
+                guildId: nil,
+                channelName: vm.channel?.name,
+                guildName: nil,
+                selfVideo: false
+              )
+            }
+          } label: {
+            Image(systemName: "phone")
+          }
+          .disabled(gw.voice.connectedChannelId == vm.channelId)
+
+          Button {
+            Task {
+              await gw.voice.joinChannel(
+                channelId: vm.channelId,
+                guildId: nil,
+                channelName: vm.channel?.name,
+                guildName: nil,
+                selfVideo: true
+              )
+            }
+          } label: {
+            Image(systemName: "video")
+          }
+          .disabled(gw.voice.connectedChannelId == vm.channelId)
+        }
       }
     }
     .onReceive(

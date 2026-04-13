@@ -16,13 +16,17 @@ extension MemberSidebarView {
     var accumulator: ChannelStore.MemberListAccumulator
 
     @State var upperBound: Int? = 0
+    @State private var scrollPairs: [IntPair] = [.init(0, 99)]
 
-    var scrollPairs: [IntPair] {
+    private static func computeScrollPairs(
+      upperBound: Int?,
+      rowCount: Int
+    ) -> [IntPair] {
       var pairs: [(Int, Int)] = [(0, 99)]
       guard let upperBound else {
         return pairs.map(IntPair.init)
       }
-      let maxIndex = accumulator.rowCount - 1
+      let maxIndex = rowCount - 1
       guard maxIndex >= 100 else {
         return pairs.map(IntPair.init)
       }
@@ -56,6 +60,24 @@ extension MemberSidebarView {
         .padding(.horizontal, 2)
       }
       .scrollPosition(id: $upperBound, anchor: .bottom)
+      .onAppear {
+        scrollPairs = Self.computeScrollPairs(
+          upperBound: upperBound,
+          rowCount: accumulator.rowCount
+        )
+      }
+      .onChange(of: accumulator.rowCount) { _, newCount in
+        scrollPairs = Self.computeScrollPairs(
+          upperBound: upperBound,
+          rowCount: newCount
+        )
+      }
+      .onChange(of: upperBound) { _, newUpper in
+        scrollPairs = Self.computeScrollPairs(
+          upperBound: newUpper,
+          rowCount: accumulator.rowCount
+        )
+      }
       .task(id: scrollPairs) {
         await channelStore.requestMemberListRange(scrollPairs)
       }

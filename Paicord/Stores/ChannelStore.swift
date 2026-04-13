@@ -110,8 +110,9 @@ class ChannelStore: DiscordDataStore {
       self.hasLatestMessages = true
       self.loadingMessagesTask = nil
     }
-    eventTask = Task { @MainActor in
+    eventTask = Task { @MainActor [weak self] in
       for await event in await gateway.events {
+        guard let self else { return }
         switch event.data {
         // Channel updates
         case .channelUpdate(let updatedChannel):
@@ -421,6 +422,9 @@ class ChannelStore: DiscordDataStore {
     guard gateway?.user.currentUser?.id != userId else { return }
 
     let token = UUID()
+    if typingTimeoutTokens.count > 1000 {
+      typingTimeoutTokens.removeAll()
+    }
     typingTimeoutTokens[userId] = token
 
     Task { [weak self] in

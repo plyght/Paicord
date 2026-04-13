@@ -121,7 +121,7 @@ public enum SuperProperties {
   public static func GenerateSuperPropertiesHeader() -> String {
     let properties = Gateway.Identify.ConnectionProperties(ws: false)
     // try unsafe because it probably will be fine
-    let encoded = try! DiscordGlobalConfiguration.encoder.encode(properties)
+    let encoded = (try? DiscordGlobalConfiguration.encoder.encode(properties)) ?? Data()
     return encoded.base64EncodedString()
   }
 
@@ -155,7 +155,7 @@ public enum SuperProperties {
       case .createMessage: ["location": "chat_input"]
       case .createDM: [:]
       }
-    let data = try! JSONSerialization.data(withJSONObject: dict, options: [])
+    let data = (try? JSONSerialization.data(withJSONObject: dict, options: [])) ?? Data()
     return data.base64EncodedString()
   }
 
@@ -362,8 +362,8 @@ public enum SuperProperties {
   }
 
   public static func cfnetwork_version() -> String {
-    let dictionary = Bundle(identifier: "com.apple.CFNetwork")?.infoDictionary!
-    let version = dictionary?["CFBundleShortVersionString"] as! String
+    let dictionary = Bundle(identifier: "com.apple.CFNetwork")?.infoDictionary ?? [:]
+    let version = dictionary["CFBundleShortVersionString"] as? String ?? "unknown"
     return version
   }
 
@@ -406,19 +406,21 @@ public enum SuperProperties {
 
   public static func device_vendor_id() -> String? {
     #if os(iOS)
-      DispatchQueue.main.sync {
+      let read: () -> String? = {
         if let uuid = UIDevice.current.identifierForVendor {
           return uuid.uuidString.uppercased()
         }
         return UUID().uuidString.uppercased()  // fallback
       }
+      return Thread.isMainThread ? read() : DispatchQueue.main.sync(execute: read)
     #elseif os(watchOS)
-      DispatchQueue.main.sync {
+      let read: () -> String? = {
         if let uuid = WKInterfaceDevice.current().identifierForVendor {
           return uuid.uuidString.uppercased()
         }
         return UUID().uuidString.uppercased()  // fallback
       }
+      return Thread.isMainThread ? read() : DispatchQueue.main.sync(execute: read)
     #elseif os(macOS)
       return nil
     #else
