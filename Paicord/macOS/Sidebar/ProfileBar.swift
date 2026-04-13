@@ -21,13 +21,26 @@ struct ProfileBar: View {
   @State var showingPopover = false
   @State var barHovered = false
 
+  private var currentCustomStatus: Gateway.Activity? {
+    guard
+      let session = gw.user.sessions.first(where: { $0.id == "all" }),
+      let status = session.activities.first,
+      status.type == .custom
+    else { return nil }
+    return status
+  }
+
   var body: some View {
+    let user = gw.user.currentUser
+    let displayName = user?.global_name ?? user?.username ?? "Unknown User"
+    let username = user?.username ?? "Unknown User"
+    let status = currentCustomStatus
     HStack {
       Button {
         showingPopover.toggle()
       } label: {
         HStack {
-          if let user = gw.user.currentUser {
+          if let user {
             Profile.AvatarWithPresence(
               member: nil,
               user: user
@@ -38,35 +51,26 @@ struct ProfileBar: View {
           }
 
           VStack(alignment: .leading) {
-            Text(
-              gw.user.currentUser?.global_name ?? gw.user.currentUser?.username
-                ?? "Unknown User"
-            )
-            .bold()
+            Text(displayName)
+              .bold()
             if showingUsername {
-              Text(verbatim: "@\(gw.user.currentUser?.username ?? "Unknown User")")
+              Text(verbatim: "@\(username)")
                 .transition(.opacity)
-            } else {
-              if let session = gw.user.sessions.first(where: { $0.id == "all" }
-              ),
-                let status = session.activities.first,
-                status.type == .custom
-              {
-                if let emoji = status.emoji {
-                  if let url = emojiURL(for: emoji, animated: true) {
-                    AnimatedImage(url: url)
-                      .resizable()
-                      .scaledToFit()
-                      .frame(width: 16, height: 16)
-                  } else {
-                    Text(emoji.name)
-                      .font(.system(size: 14))
-                  }
+            } else if let status {
+              if let emoji = status.emoji {
+                if let url = emojiURL(for: emoji, animated: true) {
+                  AnimatedImage(url: url)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 16, height: 16)
+                } else {
+                  Text(emoji.name)
+                    .font(.system(size: 14))
                 }
-
-                Text(status.state ?? "")
-                  .transition(.opacity)
               }
+
+              Text(status.state ?? "")
+                .transition(.opacity)
             }
           }
           .background(.black.opacity(0.001))
@@ -75,6 +79,7 @@ struct ProfileBar: View {
         }
       }
       .buttonStyle(.plain)
+      .accessibilityLabel("Account: \(displayName)")
       .popover(isPresented: $showingPopover) {
         ProfileButtonPopout()
       }
@@ -100,8 +105,6 @@ struct ProfileBar: View {
       if let nameplate = gw.user.currentUser?.collectibles?.nameplate {
         Profile.NameplateView(nameplate: nameplate)
           .nameplateAnimated(barHovered)
-          .saturation(0.9)
-          .brightness(0.1)
       }
     }
     .clipped()

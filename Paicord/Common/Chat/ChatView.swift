@@ -20,7 +20,6 @@ struct ChatView: View {
   @Environment(\.theme) var theme
 
   @State private var currentScrollPosition: MessageSnowflake?
-  @State private var isScrolling: Bool = false
 
   var drain: MessageDrainStore { gw.messageDrain }
 
@@ -31,24 +30,20 @@ struct ChatView: View {
 
   #if os(macOS)
     @FocusState private var isChatFocused: Bool
-
-    @ViewStorage private var scrollStopWorkItem: DispatchWorkItem?
-    @ViewStorage private var scrollObserver: NSObjectProtocol?
   #endif
-
-  private var blockedUserIDs: Set<UserSnowflake> {
-    Set(
-      gw.user.relationships
-        .filter { $0.value.type == .blocked || $0.value.user_ignored }
-        .map { $0.key }
-    )
-  }
 
   var body: some View {
     let orderedMessages = vm.messages.values
     let pendingMessages = drain.pendingMessages[vm.channelId, default: [:]]
     let currentUserID = gw.user.currentUser?.id
-    let blocked = blockedUserIDs
+    let blocked: Set<UserSnowflake> = {
+      var s = Set<UserSnowflake>()
+      for (id, rel) in gw.user.relationships
+      where rel.type == .blocked || rel.user_ignored {
+        s.insert(id)
+      }
+      return s
+    }()
     let userRoles: [RoleSnowflake]? = {
       guard let currentUserID else { return nil }
       return vm.guildStore?.members[currentUserID]?.roles
@@ -74,14 +69,23 @@ struct ChatView: View {
             }
           }
 
-          ForEach(orderedMessages) { msg in
-            let prior = vm.getMessage(before: msg)
+          let pairs: [(DiscordChannel.Message, DiscordChannel.Message?)] = {
+            var out: [(DiscordChannel.Message, DiscordChannel.Message?)] = []
+            out.reserveCapacity(orderedMessages.count)
+            var prior: DiscordChannel.Message? = nil
+            for msg in orderedMessages {
+              out.append((msg, prior))
+              prior = msg
+            }
+            return out
+          }()
+
+          ForEach(pairs, id: \.0.id) { msg, prior in
             if msg.author?.id == nil || !blocked.contains(msg.author!.id) {
               MessageCell(
                 for: msg,
                 prior: prior,
                 channel: vm,
-                scrolling: isScrolling,
                 currentUserID: currentUserID,
                 currentUserRoles: userRoles
               )
@@ -123,6 +127,7 @@ struct ChatView: View {
         }
         .scrollTargetLayout()
       }
+      .id(vm.channelId)
       #if os(macOS)
         // esc to scroll to bottom of chat, its a little jank
         .focusable()
@@ -136,33 +141,9 @@ struct ChatView: View {
           )
           return .handled
         }
-        .introspect(.scrollView, on: .macOS(.v14...)) { scrollView in
-
-          let clipView = scrollView.contentView
-
-          guard scrollObserver == nil else { return }
-          clipView.postsBoundsChangedNotifications = true
-
-          scrollObserver = NotificationCenter.default.addObserver(
-            forName: NSView.boundsDidChangeNotification,
-            object: clipView,
-            queue: .main
-          ) { _ in
-            isScrolling = true
-
-            scrollStopWorkItem?.cancel()
-            let work = DispatchWorkItem {
-              isScrolling = false
-            }
-            scrollStopWorkItem = work
-            DispatchQueue.main.asyncAfter(
-              deadline: .now() + 0.12,
-              execute: work
-            )
-          }
-        }
       #endif
-      .scrollPosition(id: $currentScrollPosition, anchor: .bottom)  // causes issues with input bar height changes:
+      .scrollPosition(id: $currentScrollPosition, anchor: .bottom)
+      // causes issues with input bar height changes:
       // currently, the input bar changing size can cause the scrollview position to jump unexpectedly.
       // not sure how to fix.
       .bottomAnchored()
@@ -217,17 +198,6 @@ struct ChatView: View {
     .background(theme.common.secondaryBackground)
     .ignoresSafeArea(.keyboard, edges: .all)
 
-    #if os(macOS)
-      .onDisappear {
-        if let observer = scrollObserver {
-          NotificationCenter.default.removeObserver(observer)
-          scrollObserver = nil
-        }
-
-        scrollStopWorkItem?.cancel()
-        scrollStopWorkItem = nil
-      }
-    #endif
 
     .toolbar {
       ToolbarItem(placement: .navigation) {

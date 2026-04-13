@@ -89,6 +89,7 @@ extension ChatView {
           .font(idiom == .phone ? .headline : .title3)
           .fontWeight(.semibold)
         }
+        .padding(.trailing, 6)
       default:
         HStack(spacing: 4) {
           Image(systemName: "number")
@@ -99,6 +100,7 @@ extension ChatView {
             .font(idiom == .phone ? .headline : .title3)
             .fontWeight(.semibold)
         }
+        .padding(.trailing, 6)
       }
     }
   }

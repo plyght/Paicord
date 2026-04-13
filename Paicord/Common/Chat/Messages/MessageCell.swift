@@ -21,33 +21,33 @@ struct MessageCell: View {
   var message: DiscordChannel.Message
   var priorMessage: DiscordChannel.Message?
   var channelStore: ChannelStore
-  var isScrolling: Bool = false
   var currentUserID: UserSnowflake?
   var currentUserRoles: [RoleSnowflake]?
   @State var cellHighlighted = false
+  @State private var mentionPulse: Double = 0
 
   init(
     for message: DiscordChannel.Message,
     prior: DiscordChannel.Message? = nil,
     channel: ChannelStore,
-    scrolling: Bool = false,
     currentUserID: UserSnowflake? = nil,
     currentUserRoles: [RoleSnowflake]? = nil
   ) {
     self.message = message
     self.priorMessage = prior
     self.channelStore = channel
-    self.isScrolling = scrolling
     self.currentUserID = currentUserID
     self.currentUserRoles = currentUserRoles
   }
 
   var userMentioned: Bool {
     guard let currentUserID else { return false }
-    if message.mention_everyone { return true }
-    if message.mentions.contains(where: { $0.id == currentUserID }) {
-      return true
+    let explicit = message.mentions.contains(where: { $0.id == currentUserID })
+    if channelStore.channel?.type == .dm || channelStore.channel?.type == .groupDm {
+      return explicit
     }
+    if explicit { return true }
+    if message.mention_everyone { return true }
     if let currentUserRoles {
       for roleID in message.mention_roles {
         if currentUserRoles.contains(roleID) {
@@ -92,15 +92,29 @@ struct MessageCell: View {
     .background(Color.almostClear)
     .padding(.horizontal, 10)
     .padding(.vertical, 2)
-    .background(Color(hexadecimal6: 0xcc8735).opacity(userMentioned ? 0.05 : 0))
-    .background(alignment: .leading) {
-      Color(hexadecimal6: 0xce9c5c).opacity(userMentioned ? 1 : 0)
-        .maxWidth(2)
+    .overlay {
+      if userMentioned {
+        Color.accentColor.opacity(mentionPulse * 0.18)
+          .allowsHitTesting(false)
+      }
+    }
+    .overlay(alignment: .leading) {
+      if userMentioned {
+        Color.accentColor.opacity(mentionPulse)
+          .frame(width: 2)
+          .allowsHitTesting(false)
+      }
+    }
+    .onAppear {
+      guard userMentioned else { return }
+      mentionPulse = 0
+      withAnimation(.easeOut(duration: 0.25)) { mentionPulse = 1 }
+      withAnimation(.easeIn(duration: 1.1).delay(0.35)) { mentionPulse = 0 }
     }
     #if os(macOS)
       .onHover { self.cellHighlighted = $0 }
       .background(
-        !isScrolling && cellHighlighted
+        cellHighlighted
           ? Color(NSColor.secondaryLabelColor).opacity(0.1) : .clear
       )
     #endif

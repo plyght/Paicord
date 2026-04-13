@@ -51,8 +51,6 @@ extension MessageCell {
             Text("Unsupported embed type: \(embed.type)")
           }
         }
-        .debugRender()
-        .debugCompute()
       }
     }
 

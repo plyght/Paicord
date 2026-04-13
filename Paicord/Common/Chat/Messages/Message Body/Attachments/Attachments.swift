@@ -61,15 +61,11 @@ extension MessageCell {
         // audio files
         ForEach(audioAttachments) { audio in
           AttachmentAudioPlayer(attachment: audio)
-            .debugRender()
-            .debugCompute()
         }
 
         // files
         ForEach(fileAttachments) { file in
           FileAttachmentView(attachment: file)
-            .debugRender()
-            .debugCompute()
         }
       }
     }
@@ -89,8 +85,6 @@ extension MessageCell {
             attachment: attachment
           )
         }
-        .debugRender()
-        .debugCompute()
       }
     }
 

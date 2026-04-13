@@ -28,9 +28,16 @@ extension DiscordColor {
 
 extension GuildStore {
   func roleColor(for member: Guild.PartialMember?) -> Color? {
-    member?.roles?.compactMap { roles[$0] }
-      .sorted(by: { $0.position > $1.position })
-      .compactMap { $0.color.value != 0 ? $0.color : nil }
-      .first?.asColor()
+    guard let memberRoles = member?.roles, !memberRoles.isEmpty else { return nil }
+    var bestPosition: Int = .min
+    var bestColor: DiscordColor? = nil
+    for roleID in memberRoles {
+      guard let role = roles[roleID], role.color.value != 0 else { continue }
+      if role.position > bestPosition {
+        bestPosition = role.position
+        bestColor = role.color
+      }
+    }
+    return bestColor?.asColor()
   }
 }

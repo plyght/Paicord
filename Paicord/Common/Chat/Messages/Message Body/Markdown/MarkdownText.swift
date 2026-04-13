@@ -71,8 +71,6 @@ struct MarkdownText: View, Equatable {
         ForEach(renderer.blocks) { block in
           BlockView(block: block)
             .equatable()
-            .debugRender()
-            .debugCompute()
         }
       }
     }

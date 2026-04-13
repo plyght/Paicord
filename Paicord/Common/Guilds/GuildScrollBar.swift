@@ -25,13 +25,18 @@ struct GuildScrollBar: View {
   private var unlistedGuilds: [Guild] {
     guard let userID = gw.user.currentUser?.id else { return [] }
     let listed = listedGuildIDs
-    return gw.user.guilds.values
-      .filter { !listed.contains($0.id.rawValue) }
-      .sorted { a, b in
-        let aJoined = gw.user.guilds[a.id]?.members?.first(where: { $0.user?.id == userID })?.joined_at
-        let bJoined = gw.user.guilds[b.id]?.members?.first(where: { $0.user?.id == userID })?.joined_at
-        return (bJoined ?? .init(date: .now)) < (aJoined ?? .init(date: .now))
+    let candidates = gw.user.guilds.values.filter { !listed.contains($0.id.rawValue) }
+    var joinedAt: [GuildSnowflake: Date] = [:]
+    joinedAt.reserveCapacity(candidates.count)
+    let fallback = Date.now
+    for guild in candidates {
+      if let ts = guild.members?.first(where: { $0.user?.id == userID })?.joined_at {
+        joinedAt[guild.id] = ts.date
       }
+    }
+    return candidates.sorted { a, b in
+      (joinedAt[b.id] ?? fallback) < (joinedAt[a.id] ?? fallback)
+    }
   }
 
   var body: some View {

@@ -101,12 +101,14 @@ extension ChatView {
       .background(Color.almostClear)
       .padding(.horizontal, 10)
       .padding(.vertical, 2)
-      .background(
-        Color(hexadecimal6: 0xcc8735).opacity(userMentioned ? 0.05 : 0)
-      )
-      .background(alignment: .leading) {
-        Color(hexadecimal6: 0xce9c5c).opacity(userMentioned ? 1 : 0)
-          .maxWidth(2)
+      .overlay {
+        Color.accentColor.opacity(userMentioned ? 0.18 : 0)
+          .allowsHitTesting(false)
+      }
+      .overlay(alignment: .leading) {
+        Color.accentColor.opacity(userMentioned ? 1 : 0)
+          .frame(width: 2)
+          .allowsHitTesting(false)
       }
       .equatable(by: cellHash)
       /// stop updates to messages unless messages change.
