@@ -124,38 +124,167 @@ struct ProfileBar: View {
   struct ProfileButtonPopout: View {
     @Environment(\.gateway) var gw
     @Environment(\.appState) var appState
+    @Environment(\.colorScheme) var systemColorScheme
     @State var statusSelectionExpanded = false
     @State var accountSelectionExpanded = false
+    @State private var profile: DiscordUser.Profile?
+
+    private var currentCustomStatus: Gateway.Activity? {
+      guard
+        let session = gw.user.sessions.first(where: { $0.id == "all" }),
+        let status = session.activities.first,
+        status.type == .custom
+      else { return nil }
+      return status
+    }
+
+    var resolvedColorScheme: ColorScheme? {
+      guard let firstColor = profile?.user_profile?.theme_colors?.first else {
+        return nil
+      }
+      return firstColor.asColor()?.suggestedColorScheme()
+    }
 
     var body: some View {
-      List {
-        HStack {
-          if let user = gw.user.currentUser {
+      VStack(alignment: .leading, spacing: 0) {
+        bannerView
+
+        profileBody
+          .padding()
+
+        Divider()
+          .padding(.horizontal)
+
+        controlsBody
+          .padding(.horizontal)
+          .padding(.vertical, 8)
+      }
+      .frame(width: 320)
+      .fixedSize(horizontal: false, vertical: true)
+      .task(fetchProfile)
+      .background(
+        Profile.ThemeColorsBackground(
+          colors: profile?.user_profile?.theme_colors
+        )
+        .overlay(.ultraThinMaterial)
+      )
+      .environment(\.colorScheme, resolvedColorScheme ?? systemColorScheme)
+    }
+
+    @ViewBuilder
+    var bannerView: some View {
+      if let user = gw.user.currentUser {
+        Utils.UserBannerURL(
+          user: user.toPartialUser(),
+          profile: profile,
+          mainProfileBanner: true,
+          animated: true
+        ) { bannerURL in
+          WebImage(url: bannerURL) { phase in
+            switch phase {
+            case .success(let image):
+              image
+                .resizable()
+                .aspectRatio(3, contentMode: .fill)
+            default:
+              let color =
+                profile?.user_profile?.theme_colors?.first
+                ?? profile?.user_profile?.accent_color
+              Rectangle()
+                .aspectRatio(3, contentMode: .fit)
+                .foregroundStyle(color?.asColor() ?? Color.accentColor)
+            }
+          }
+          .reverseMask(alignment: .bottomLeading) {
+            Circle()
+              .frame(width: 80, height: 80)
+              .padding(.leading, 16)
+              .scaleEffect(1.15)
+              .offset(x: -1, y: 40)
+          }
+          .overlay(alignment: .bottomLeading) {
             Profile.AvatarWithPresence(
               member: nil,
               user: user
             )
-            .maxWidth(40)
-            .maxHeight(40)
-            .profileAnimated(false)
+            .profileAnimated()
             .profileShowsAvatarDecoration()
+            .frame(width: 80, height: 80)
+            .padding(.leading, 16)
+            .offset(y: 40)
+          }
+          .padding(.bottom, 30)
+        }
+      }
+    }
+
+    @ViewBuilder
+    var profileBody: some View {
+      if let user = gw.user.currentUser {
+        let profileMeta: DiscordUser.Profile.Metadata? = profile?.user_profile
+        VStack(alignment: .leading, spacing: 6) {
+          Text(user.global_name ?? user.username ?? "Unknown User")
+            .font(.title2)
+            .bold()
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
+
+          FlowLayout(xSpacing: 8, ySpacing: 2) {
+            Group {
+              Text(verbatim: "@\(user.username ?? "unknown")")
+              if let pronouns = profileMeta?.pronouns ?? user.pronouns,
+                !pronouns.isEmpty
+              {
+                Text(verbatim: "•")
+                Text(pronouns)
+              }
+            }
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+
+            Profile.BadgesView(profile: profile, user: user.toPartialUser())
           }
 
-          VStack(alignment: .leading) {
-            Text(
-              gw.user.currentUser?.global_name ?? gw.user.currentUser?.username
-                ?? "Unknown User"
-            )
-            .bold()
-            Text(verbatim: "@\(gw.user.currentUser?.username ?? "Unknown User")")
+          if let status = currentCustomStatus {
+            HStack(spacing: 6) {
+              if let emoji = status.emoji {
+                if let url = emojiURL(for: emoji, animated: true) {
+                  AnimatedImage(url: url)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 16, height: 16)
+                } else {
+                  Text(emoji.name)
+                    .font(.system(size: 14))
+                }
+              }
+              if let state = status.state, !state.isEmpty {
+                Text(state)
+                  .font(.subheadline)
+              }
+            }
+            .padding(.top, 2)
+          }
+
+          if let bio = profileMeta?.bio, !bio.isEmpty {
+            MarkdownText(content: bio)
+              .equatable()
+              .padding(.top, 4)
           }
         }
-        .padding(.vertical, 5)
+      }
+    }
 
-        NavigationLink(value: "gm") {
+    @ViewBuilder
+    var controlsBody: some View {
+      VStack(alignment: .leading, spacing: 4) {
+        Button {
+        } label: {
           Label("Edit Profile", systemImage: "pencil")
             .padding(.vertical, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .buttonStyle(.borderless)
         .disabled(true)
 
         DisclosureGroup(isExpanded: $statusSelectionExpanded) {
@@ -168,11 +297,17 @@ struct ProfileBar: View {
 
           ForEach(statuses, id: \.self) { status in
             AsyncButton {
+              await gw.presence.setPresence(status: status)
+              gw.presence.currentClientStatus = status
+              withAnimation {
+                statusSelectionExpanded = false
+              }
             } catch: { error in
               appState.error = error
             } label: {
               statusItem(status)
                 .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.borderless)
           }
@@ -184,6 +319,7 @@ struct ProfileBar: View {
           } label: {
             statusItem(gw.presence.currentClientStatus)
               .padding(.vertical, 4)
+              .frame(maxWidth: .infinity, alignment: .leading)
           }
           .buttonStyle(.borderless)
         }
@@ -227,6 +363,7 @@ struct ProfileBar: View {
                 }
               }
               .padding(.vertical, 2)
+              .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.borderless)
             .disabled(isSignedInAccount)
@@ -241,9 +378,9 @@ struct ProfileBar: View {
           } label: {
             Label("Add Account", systemImage: "person.crop.circle.badge.plus")
               .padding(.vertical, 4)
+              .frame(maxWidth: .infinity, alignment: .leading)
           }
           .buttonStyle(.borderless)
-
         } label: {
           Button {
             withAnimation {
@@ -252,14 +389,43 @@ struct ProfileBar: View {
           } label: {
             Label("Switch Account", systemImage: "person.crop.circle")
               .padding(.vertical, 4)
+              .frame(maxWidth: .infinity, alignment: .leading)
           }
           .buttonStyle(.borderless)
-
         }
-
       }
-      .minWidth(250)
-      .minHeight(300)
+    }
+
+    func emojiURL(for emoji: Gateway.Activity.ActivityEmoji, animated: Bool)
+      -> URL?
+    {
+      guard let id = emoji.id else { return nil }
+      return URL(
+        string: CDNEndpoint.customEmoji(emojiId: id).url
+          + (animated && emoji.animated == true ? ".gif" : ".png") + "?size=44"
+      )
+    }
+
+    @Sendable
+    func fetchProfile() async {
+      guard profile == nil, let userID = gw.user.currentUser?.id else { return }
+      let res = try? await gw.client.getUserProfile(
+        userID: userID,
+        withMutualGuilds: false,
+        withMutualFriends: false,
+        withMutualFriendsCount: false
+      )
+      do {
+        try res?.guardSuccess()
+        let profile = try res?.decode()
+        self.profile = profile
+      } catch {
+        if let error = res?.asError() {
+          appState.error = error
+        } else {
+          appState.error = error
+        }
+      }
     }
 
     @ViewBuilder

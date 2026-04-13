@@ -132,11 +132,18 @@ extension ChatView {
           }
           .padding(.top, 4)
 
-          TypingIndicatorBar(vm: vm)
-            #if os(iOS)
+          #if os(iOS)
+            TypingIndicatorBar(vm: vm)
               .background(.bar)
-            #endif
-            .padding(.top, -18)  // away from bar
+              .padding(.top, -18)  // away from bar
+          #else
+            TypingIndicatorBar(vm: vm)
+              .padding(.vertical, 6)
+              .padding(.horizontal, 4)
+              .glassEffect(.regular, in: .capsule)
+              .padding(.horizontal, 8)
+              .padding(.top, -28)
+          #endif
         }
         #if os(iOS)
           .background(.bar)
@@ -548,8 +555,12 @@ extension ChatView {
       .padding(.horizontal, 6)
       .padding(.leading, 4)
       .padding(.vertical, 4)
-      .background(.background.secondary.opacity(0.8))
-      .clipShape(.capsule)
+      #if os(iOS)
+        .background(.background.secondary.opacity(0.8))
+        .clipShape(.capsule)
+      #else
+        .glassEffect(.regular.interactive(), in: .capsule)
+      #endif
       .padding(.horizontal, 8)
     }
 
