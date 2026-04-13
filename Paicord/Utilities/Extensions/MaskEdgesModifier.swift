@@ -87,29 +87,20 @@ public struct ScrollFadeMask<Content: View>: View {
     ScrollView(axes) {
       ZStack(alignment: .topLeading) {
         content()
-          .background(
-            GeometryReader { gp -> Color in
-              // report via preference
-              let frame = gp.frame(in: .named(spaceName))
-              DispatchQueue.main.async {
-                // We update state on main thread to ensure smooth UI updates
-                self.contentFrame = frame
-              }
-              return Color.clear
-            }
-          )
+          .onGeometryChange(for: CGRect.self) { proxy in
+            proxy.frame(in: .named(spaceName))
+          } action: { newFrame in
+            contentFrame = newFrame
+          }
       }
       .padding(.zero)
     }
     .coordinateSpace(name: spaceName)
-    .background(
-      GeometryReader { gp -> Color in
-        DispatchQueue.main.async {
-          self.containerSize = gp.size
-        }
-        return Color.clear
-      }
-    )
+    .onGeometryChange(for: CGSize.self) { proxy in
+      proxy.size
+    } action: { newSize in
+      containerSize = newSize
+    }
     .reverseMask {
       ZStack {
         if topFadeThickness > 0 || bottomFadeThickness > 0 {

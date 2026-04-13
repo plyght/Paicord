@@ -257,10 +257,7 @@ extension ChatView {
           let userID = gw.user.currentUser?.id
         {
           let member = guildStore.members[userID]
-          let color = member?.roles?.compactMap { guildStore.roles[$0] }
-            .sorted(by: { $0.position > $1.position })
-            .compactMap { $0.color.value != 0 ? $0.color : nil }
-            .first?.asColor()
+          let color = guildStore.roleColor(for: member)
 
           Text(
             member?.nick ?? gw.user.currentUser?.global_name ?? gw.user

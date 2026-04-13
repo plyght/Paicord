@@ -13,7 +13,9 @@ import PaicordLib
 @Observable
 class CurrentUserStore: DiscordDataStore {
   // MARK: - Protocol Properties
+  @ObservationIgnored
   var gateway: GatewayStore?
+  @ObservationIgnored
   var eventTask: Task<Void, Never>?
 
   // MARK: - State Properties
@@ -21,7 +23,9 @@ class CurrentUserStore: DiscordDataStore {
   var guilds: [GuildSnowflake: Guild] = [:]
   var privateChannels: OrderedDictionary<ChannelSnowflake, DiscordChannel> = [:]
   var relationships: [UserSnowflake: DiscordRelationship] = [:]
+  @ObservationIgnored
   var presences: [UserSnowflake: Gateway.PresenceUpdate] = [:]
+  @ObservationIgnored
   var users: [UserSnowflake: PartialUser] = [:]
   var sessions: [Gateway.Session] = []
   var emojis: [GuildSnowflake: [EmojiSnowflake: Emoji]] = [:]

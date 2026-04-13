@@ -123,13 +123,7 @@ struct ChannelButton: View {
       .padding(.horizontal, 4)
 
     case .guildCategory:
-      let expectedParentID = channel.id
-      let childChannels = channels.values
-        .filter { $0.parent_id ?? (try! .makeFake()) == expectedParentID }
-        .sorted { ($0.position ?? 0) < ($1.position ?? 0) }
-        .map { $0.id }
-
-      category(channelIDs: childChannels)
+      category(channelIDs: childChannelIDs(for: channel.id))
         .tint(.primary)
     case .guildText:
       textChannelButton { _ in
@@ -187,7 +181,13 @@ struct ChannelButton: View {
     }
   }
 
-  // Shim
+  private func childChannelIDs(for parentID: ChannelSnowflake) -> [ChannelSnowflake] {
+    channels.values
+      .filter { $0.parent_id?.rawValue == parentID.rawValue }
+      .sorted { ($0.position ?? 0) < ($1.position ?? 0) }
+      .map { $0.id }
+  }
+
   struct TextChannelButton<Content: View>: View {
     @Environment(\.appState) var appState
     @Environment(\.guildStore) var guild
@@ -274,16 +274,16 @@ struct ChannelButton: View {
       }
     }
 
-    /// Set by initialiser, hides the category if there are no visible channels inside it.
     var shouldHide: Bool {
-      // reduce channels by bool
-      let channels = channelIDs.compactMap { self.channels[$0] }
-      let allHidden = channels.reduce(true) { partialResult, channel in
-        partialResult
-          && guild?.hasPermission(channel: channel, .viewChannel)
-            == false
+      guard let guild else { return false }
+      for id in channelIDs {
+        if let channel = channels[id],
+          guild.hasPermission(channel: channel, .viewChannel) != false
+        {
+          return false
+        }
       }
-      return allHidden
+      return true
     }
 
     init(

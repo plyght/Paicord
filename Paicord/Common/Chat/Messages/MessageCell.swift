@@ -22,40 +22,40 @@ struct MessageCell: View {
   var priorMessage: DiscordChannel.Message?
   var channelStore: ChannelStore
   var isScrolling: Bool = false
+  var currentUserID: UserSnowflake?
+  var currentUserRoles: [RoleSnowflake]?
   @State var cellHighlighted = false
 
   init(
     for message: DiscordChannel.Message,
     prior: DiscordChannel.Message? = nil,
     channel: ChannelStore,
-    scrolling: Bool = false
+    scrolling: Bool = false,
+    currentUserID: UserSnowflake? = nil,
+    currentUserRoles: [RoleSnowflake]? = nil
   ) {
     self.message = message
     self.priorMessage = prior
     self.channelStore = channel
     self.isScrolling = scrolling
+    self.currentUserID = currentUserID
+    self.currentUserRoles = currentUserRoles
   }
 
   var userMentioned: Bool {
-    let gw = GatewayStore.shared
-    guard let currentUserID = gw.user.currentUser?.id else {
-      return false
+    guard let currentUserID else { return false }
+    if message.mention_everyone { return true }
+    if message.mentions.contains(where: { $0.id == currentUserID }) {
+      return true
     }
-    let mentionedUser: Bool = message.mentions.contains(where: {
-      $0.id == currentUserID
-    })
-    let mentionedEveryone: Bool = message.mention_everyone
-    let mentionedUserByRole: Bool = {
-      let usersRoles =
-        channelStore.guildStore?.members[currentUserID]?.roles ?? []
+    if let currentUserRoles {
       for roleID in message.mention_roles {
-        if usersRoles.contains(roleID) {
+        if currentUserRoles.contains(roleID) {
           return true
         }
       }
-      return false
-    }()
-    return mentionedUser || mentionedEveryone || mentionedUserByRole
+    }
+    return false
   }
 
   var body: some View {

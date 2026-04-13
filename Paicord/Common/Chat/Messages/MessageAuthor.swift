@@ -59,10 +59,7 @@ extension MessageCell {
         } label: {
           if let guildStore, let userID = message.author?.id {
             let member = guildStore.members[userID] ?? message.member
-            let color = member?.roles?.compactMap { guildStore.roles[$0] }
-              .sorted(by: { $0.position > $1.position })
-              .compactMap { $0.color.value != 0 ? $0.color : nil }
-              .first?.asColor()
+            let color = guildStore.roleColor(for: member)
 
             Text(
               member?.nick ?? message.author?.global_name ?? message.author?

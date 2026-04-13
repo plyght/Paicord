@@ -25,3 +25,12 @@ extension DiscordColor {
     )
   }
 }
+
+extension GuildStore {
+  func roleColor(for member: Guild.PartialMember?) -> Color? {
+    member?.roles?.compactMap { roles[$0] }
+      .sorted(by: { $0.position > $1.position })
+      .compactMap { $0.color.value != 0 ? $0.color : nil }
+      .first?.asColor()
+  }
+}

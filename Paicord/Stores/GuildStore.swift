@@ -14,7 +14,9 @@ import SwiftPrettyPrint
 @Observable
 class GuildStore: DiscordDataStore {
   // MARK: - Protocol Properties
+  @ObservationIgnored
   var gateway: GatewayStore?
+  @ObservationIgnored
   var eventTask: Task<Void, Never>?
 
   // MARK: - Guild Properties
@@ -23,7 +25,9 @@ class GuildStore: DiscordDataStore {
   var channels: [ChannelSnowflake: DiscordChannel] = [:]
   var members: [UserSnowflake: Guild.PartialMember] = [:]
   var roles: OrderedDictionary<RoleSnowflake, Role> = [:]
+  @ObservationIgnored
   var presences: [UserSnowflake: Gateway.PresenceUpdate] = [:]
+  @ObservationIgnored
   var voiceStates: [UserSnowflake: VoiceState] = [:]
 
   // MARK: - Initializers, setup etc.

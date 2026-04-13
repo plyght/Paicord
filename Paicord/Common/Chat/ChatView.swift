@@ -36,12 +36,26 @@ struct ChatView: View {
     @ViewStorage private var scrollObserver: NSObjectProtocol?
   #endif
 
+  private var blockedUserIDs: Set<UserSnowflake> {
+    Set(
+      gw.user.relationships
+        .filter { $0.value.type == .blocked || $0.value.user_ignored }
+        .map { $0.key }
+    )
+  }
+
   var body: some View {
     let orderedMessages = vm.messages.values
     let pendingMessages = drain.pendingMessages[vm.channelId, default: [:]]
+    let currentUserID = gw.user.currentUser?.id
+    let blocked = blockedUserIDs
+    let userRoles: [RoleSnowflake]? = {
+      guard let currentUserID else { return nil }
+      return vm.guildStore?.members[currentUserID]?.roles
+    }()
 
     let shouldAnimate =
-      orderedMessages.last?.author?.id != gw.user.currentUser?.id
+      orderedMessages.last?.author?.id != currentUserID
     VStack(spacing: 20) {
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 0) {
@@ -62,12 +76,14 @@ struct ChatView: View {
 
           ForEach(orderedMessages) { msg in
             let prior = vm.getMessage(before: msg)
-            if messageAllowed(msg) {
+            if msg.author?.id == nil || !blocked.contains(msg.author!.id) {
               MessageCell(
                 for: msg,
                 prior: prior,
                 channel: vm,
-                scrolling: isScrolling
+                scrolling: isScrolling,
+                currentUserID: currentUserID,
+                currentUserRoles: userRoles
               )
             }
           }
@@ -132,9 +148,7 @@ struct ChatView: View {
             object: clipView,
             queue: .main
           ) { _ in
-            DispatchQueue.main.async {
-              isScrolling = true
-            }
+            isScrolling = true
 
             scrollStopWorkItem?.cancel()
             let work = DispatchWorkItem {
@@ -152,12 +166,11 @@ struct ChatView: View {
       // currently, the input bar changing size can cause the scrollview position to jump unexpectedly.
       // not sure how to fix.
       .bottomAnchored()
-      .scrollClipDisabled()
       .maxHeight(.infinity)
       .overlay(alignment: .bottomTrailing) {
-        let lastMessages = orderedMessages.suffix(10).map { $0.id }
+        let lastMessageIDs = Set(orderedMessages.suffix(10).map { $0.id })
         if let current = currentScrollPosition,
-          !lastMessages.contains(current)
+          !lastMessageIDs.contains(current)
         {
           Button(action: {
             NotificationCenter.default.post(
@@ -197,9 +210,9 @@ struct ChatView: View {
     }
     .animation(
       shouldAnimate && chatAnimatesMessages ? .default : nil,
-      value: orderedMessages
+      value: orderedMessages.count
     )
-    .animation(chatAnimatesMessages ? .default : nil, value: pendingMessages)
+    .animation(chatAnimatesMessages ? .default : nil, value: pendingMessages.count)
     .scrollDismissesKeyboard(.interactively)
     .background(theme.common.secondaryBackground)
     .ignoresSafeArea(.keyboard, edges: .all)
@@ -260,19 +273,6 @@ struct ChatView: View {
     }  // handle scroll to ID event
   }
 
-  func messageAllowed(_ msg: DiscordChannel.Message) -> Bool {
-    // Currently only filters out messages from blocked users
-    guard let authorId = msg.author?.id else { return true }
-
-    // check relationship
-    if let relationship = gw.user.relationships[authorId] {
-      if relationship.type == .blocked || relationship.user_ignored {
-        return false
-      }
-    }
-
-    return true
-  }
 
   //  private func scheduleScrollToBottom(
   //    proxy: ScrollViewProxy,

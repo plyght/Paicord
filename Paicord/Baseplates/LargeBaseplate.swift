@@ -65,10 +65,8 @@ struct LargeBaseplate: View {
       .toolbar {
         ToolbarItem(placement: .navigation) {
           Button {
-            withAnimation {
-              columnVisibility =
-                (columnVisibility != .detailOnly) ? .detailOnly : .doubleColumn
-            }
+            columnVisibility =
+              (columnVisibility != .detailOnly) ? .detailOnly : .doubleColumn
           } label: {
             Label("Toggle Sidebar", systemImage: "sidebar.left")
           }

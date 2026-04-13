@@ -14,7 +14,9 @@ import SwiftUIX
 
 @Observable
 class MessageDrainStore: DiscordDataStore {
+  @ObservationIgnored
   var gateway: GatewayStore?
+  @ObservationIgnored
   var eventTask: Task<Void, Never>?
 
   init() {}
@@ -72,7 +74,9 @@ class MessageDrainStore: DiscordDataStore {
     >
   ]()
   var failedMessages: [MessageSnowflake: Error] = [:]
+  @ObservationIgnored
   var messageSendQueueTask: Task<Void, Never>?
+  @ObservationIgnored
   var messageTasks: [MessageSnowflake: @Sendable () async throws -> Void] = [:]
 
   func startQueueIfNeeded() {

@@ -18,7 +18,9 @@ class ChannelStore: DiscordDataStore {
   let guildStore: GuildStore?
 
   // MARK: - Protocol Properties
+  @ObservationIgnored
   var gateway: GatewayStore?
+  @ObservationIgnored
   var eventTask: Task<Void, Never>?
 
   // MARK: - Channel Properties
@@ -47,7 +49,7 @@ class ChannelStore: DiscordDataStore {
   /// Ensures further pagination is possible unless we're at the start of the channel.
   var hasMoreHistory = true
 
-  /// The task that is currently loading messages, if any.
+  @ObservationIgnored
   var loadingMessagesTask: Task<Void, Error>?
 
   /// Whether the latest messages are in memory. If we're scrolling far back into history, this will be false.

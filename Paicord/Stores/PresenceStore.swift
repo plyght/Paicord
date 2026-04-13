@@ -15,8 +15,10 @@ import SwiftUIX
 
 @Observable
 class PresenceStore: DiscordDataStore {
+  @ObservationIgnored
   var gateway: GatewayStore?
 
+  @ObservationIgnored
   var eventTask: Task<Void, Never>?
 
   func setupEventHandling() {

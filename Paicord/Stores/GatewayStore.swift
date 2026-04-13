@@ -39,6 +39,7 @@ final class GatewayStore {
 
   @ObservationIgnored
   var eventTask: Task<Void, Never>? = nil
+  @ObservationIgnored
   var errorTask: Task<Void, Never>? = nil
 
   // MARK: - Gateway Management

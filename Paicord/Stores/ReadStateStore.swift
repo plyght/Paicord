@@ -11,8 +11,10 @@ import PaicordLib
 
 @Observable
 class ReadStateStore: DiscordDataStore {
+  @ObservationIgnored
   var gateway: GatewayStore?
 
+  @ObservationIgnored
   var eventTask: Task<Void, Never>?
 
   func setGateway(_ gateway: GatewayStore?) {

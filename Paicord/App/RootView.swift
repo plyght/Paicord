@@ -81,19 +81,10 @@ struct RootView: View {
     #if os(macOS)
       .introspect(.window, on: .macOS(.v14...)) { window in
         self.window = window
-        DispatchQueue.main.async {
-          updateWindow(window)
-        }
-      }
-      .onAppear {
-        DispatchQueue.main.async {
-          updateWindow(window)
-        }
+        updateWindow(window)
       }
       .onChange(of: gatewayStore.accounts.currentAccountID) {
-        DispatchQueue.main.async {
-          updateWindow(window)
-        }
+        updateWindow(window)
       }
     #else
       .onChange(of: gatewayStore.accounts.currentAccountID) {

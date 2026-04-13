@@ -11,7 +11,9 @@ import PaicordLib
 
 @Observable
 class SettingsStore: DiscordDataStore {
+  @ObservationIgnored
   var gateway: GatewayStore?
+  @ObservationIgnored
   var eventTask: Task<Void, Never>?
 
   // MARK: - Settings State
@@ -21,7 +23,9 @@ class SettingsStore: DiscordDataStore {
     .init()
 
   // MARK: - Batching State
+  @ObservationIgnored
   private var userSettingsTimer: Timer?
+  @ObservationIgnored
   private var frecencySettingsTimer: Timer?
   private var hasPendingUserSettings = false
   private var hasPendingFrecencySettings = false

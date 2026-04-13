@@ -14,8 +14,10 @@ import SwiftPrettyPrint
 
 @Observable
 class UserGuildSettingsStore: DiscordDataStore {
+  @ObservationIgnored
   var gateway: GatewayStore?
 
+  @ObservationIgnored
   var eventTask: Task<Void, Never>?
 
   var userGuildSettings: [GuildSnowflake?: Guild.UserGuildSettings] = [:]

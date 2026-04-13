@@ -58,34 +58,22 @@ struct ReactionsView: View {
     var body: some View {
       let emoji = reaction.emoji
       let currentUserReacted = reaction.selfReacted
-      let burstColorShadow = {
-        let burstcolor = reaction.burstColors.compactMap({
-          $0.asColor(ignoringZero: true)
-        }).first
-        if let burstcolor {
-          return burstcolor.opacity(0.8)
+      let burstColor = reaction.burstColors.compactMap({
+        $0.asColor(ignoringZero: true)
+      }).first
+      let burstColorShadow = burstColor?.opacity(0.8) ?? .clear
+      let burstColorStroke: Color = {
+        if currentUserReacted {
+          return burstColor?.opacity(0.4) ?? .primary.opacity(0.08)
         } else {
-          return .clear
+          return burstColor?.opacity(0.25) ?? .primary.opacity(0.08)
         }
       }()
-      let burstColorStroke = {
-        let burstcolor = reaction.burstColors.compactMap({
-          $0.asColor(ignoringZero: true)
-        }).first
+      let burstColorBody: Color = {
         if currentUserReacted {
-          return burstcolor?.opacity(0.4) ?? .primary.opacity(0.08)
+          return burstColor ?? theme.common.primaryButton.opacity(0.2)
         } else {
-          return burstcolor?.opacity(0.25) ?? .primary.opacity(0.08)
-        }
-      }()
-      let burstColorBody = {
-        let burstcolor = reaction.burstColors.compactMap({
-          $0.asColor(ignoringZero: true)
-        }).first
-        if currentUserReacted {
-          return burstcolor ?? theme.common.primaryButton.opacity(0.2)
-        } else {
-          return burstcolor?.opacity(0.35) ?? .primary.opacity(0.08)
+          return burstColor?.opacity(0.35) ?? .primary.opacity(0.08)
         }
       }()
       HStack(spacing: 2) {
