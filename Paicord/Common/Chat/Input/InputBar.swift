@@ -111,44 +111,49 @@ extension ChatView {
     }
 
     var body: some View {
-      VStack {
-        ZStack(alignment: .top) {
-          VStack {
-            if inputVM.uploadItems.isEmpty == false {
-              AttachmentPreviewBar(inputVM: inputVM)
-                .frame(height: 60)
-            }
+      VStack(spacing: 0) {
+        #if os(iOS)
+          TypingIndicatorBar(vm: vm)
+        #else
+          TypingIndicatorBar(vm: vm)
+            .padding(.vertical, 6)
+            .padding(.horizontal, 4)
+            .glassEffect(.regular, in: .capsule)
+            .padding(.horizontal, 8)
+            .padding(.bottom, 4)
+        #endif
 
-            if inputVM.messageAction != nil {
-              messageActionBar
-                .padding(.bottom, -4)
+        VStack {
+          if inputVM.uploadItems.isEmpty == false {
+            AttachmentPreviewBar(inputVM: inputVM)
+              .frame(height: 60)
+          }
+
+          if inputVM.messageAction != nil {
+            messageActionBar
+              .padding(.bottom, -4)
+              .transition(
+                .offset(y: 25)
+                  .combined(with: .opacity)
+              )
+          }
+
+          #if os(macOS)
+            if inputVM.isMentioning && !inputVM.mentionResults.isEmpty {
+              mentionPopover
                 .transition(
-                  .offset(y: 25)
-                    .combined(with: .opacity)
+                  .offset(y: 8).combined(with: .opacity)
                 )
             }
-
-            messageInputBar
-          }
-          .padding(.top, 4)
-
-          #if os(iOS)
-            TypingIndicatorBar(vm: vm)
-              .background(.bar)
-              .padding(.top, -18)  // away from bar
-          #else
-            TypingIndicatorBar(vm: vm)
-              .padding(.vertical, 6)
-              .padding(.horizontal, 4)
-              .glassEffect(.regular, in: .capsule)
-              .padding(.horizontal, 8)
-              .padding(.top, -28)
           #endif
+
+          messageInputBar
         }
-        #if os(iOS)
-          .background(.bar)
-        #endif
+        .padding(.top, 4)
       }
+      #if os(iOS)
+        .background(.bar)
+      #endif
       #if os(iOS)
         .animation(properties.animation, value: animatedKeyboardHeight)
         .animation(properties.animation, value: inputVM.content.isEmpty)
@@ -156,6 +161,20 @@ extension ChatView {
       #endif
       .animation(.default, value: inputVM.messageAction.debugDescription)
       .animation(.default, value: inputVM.uploadItems)
+      .onChange(of: inputVM.messageAction != nil) { _, hasAction in
+        guard hasAction else { return }
+        NotificationCenter.default.post(
+          name: .chatViewShouldScrollToBottom,
+          object: ["channelId": vm.channelId]
+        )
+      }
+      .onChange(of: inputVM.uploadItems.count) { old, new in
+        guard new > old else { return }
+        NotificationCenter.default.post(
+          name: .chatViewShouldScrollToBottom,
+          object: ["channelId": vm.channelId]
+        )
+      }
       .onFileDrop(
         delegate: .init(onDrop: { droppedItems in
           let files = droppedItems.compactMap(\.loadedURL)
@@ -434,7 +453,8 @@ extension ChatView {
             "Message\(vm.channel?.name.map { " #\($0)" } ?? "")",
             text: $inputVM.content,
             submit: sendMessage,
-            onPasteFiles: handlePastedFiles
+            onPasteFiles: handlePastedFiles,
+            inputVM: inputVM
           )
           .padding(8)
         #endif
@@ -493,6 +513,76 @@ extension ChatView {
       var animatedKeyboardHeight: CGFloat {
         (properties.pickerShown || isFocused)
           ? properties.keyboardHeight : 0
+      }
+    #endif
+
+    #if os(macOS)
+      @ViewBuilder
+      var mentionPopover: some View {
+        VStack(alignment: .leading, spacing: 0) {
+          ForEach(
+            Array(inputVM.mentionResults.enumerated()),
+            id: \.element.id
+          ) { idx, candidate in
+            mentionRow(
+              candidate: candidate,
+              selected: idx == inputVM.mentionSelectedIndex
+            )
+            .contentShape(Rectangle())
+            .onTapGesture {
+              inputVM.mentionSelectedIndex = idx
+              inputVM.acceptMentionFromUI?()
+            }
+            .onHover { hovering in
+              if hovering { inputVM.mentionSelectedIndex = idx }
+            }
+          }
+        }
+        .padding(6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassEffect(.regular, in: .rect(cornerRadius: 16))
+        .padding(.horizontal, 8)
+        .animation(.spring(duration: 0.25), value: inputVM.mentionResults)
+        .animation(
+          .spring(duration: 0.2),
+          value: inputVM.mentionSelectedIndex
+        )
+      }
+
+      @ViewBuilder
+      func mentionRow(
+        candidate: InputVM.MentionCandidate,
+        selected: Bool
+      ) -> some View {
+        HStack(spacing: 8) {
+          let url = Utils.fetchUserAvatarURL(
+            member: candidate.member,
+            guildId: vm.guildStore?.guildId,
+            user: candidate.user,
+            animated: false
+          )
+          AsyncImage(url: url) { image in
+            image.resizable()
+          } placeholder: {
+            Circle().fill(.secondary.opacity(0.3))
+          }
+          .frame(width: 22, height: 22)
+          .clipShape(.circle)
+
+          Text(candidate.displayName)
+            .fontWeight(.medium)
+            .lineLimit(1)
+          Text("@\(candidate.user.username)")
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+          Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(
+          RoundedRectangle(cornerRadius: 10)
+            .fill(selected ? Color.accentColor.opacity(0.25) : .clear)
+        )
       }
     #endif
 

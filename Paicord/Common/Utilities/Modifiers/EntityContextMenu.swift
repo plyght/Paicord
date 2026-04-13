@@ -52,6 +52,49 @@ struct EntityContextMenu<Entity>: ViewModifier {
 
   @ViewBuilder
   func messageContextMenu(message: DiscordChannel.Message) -> some View {
+    if hasPermission(.addReactions) {
+      let quickEmojis: [String] = {
+        let recent = RecentReactionsStore.shared.recent
+        var seen = Set<String>()
+        var out: [String] = []
+        for e in recent + QuickReactionPicker.defaults where seen.insert(e).inserted {
+          out.append(e)
+          if out.count == 6 { break }
+        }
+        return out
+      }()
+      let appliedSet: Set<String> = {
+        guard let channel,
+          let reactions = channel.reactions[message.id]
+        else { return [] }
+        var out: Set<String> = []
+        for (emoji, reaction) in reactions where reaction.selfReacted {
+          if emoji.id == nil, let name = emoji.name { out.insert(name) }
+        }
+        return out
+      }()
+      Picker(
+        "Reactions",
+        selection: Binding<String>(
+          get: { appliedSet.first ?? "" },
+          set: { emoji in
+            guard !emoji.isEmpty else { return }
+            if appliedSet.contains(emoji) {
+              removeReaction(from: message, emoji: emoji)
+            } else {
+              quickReact(to: message, with: emoji)
+            }
+          }
+        )
+      ) {
+        ForEach(quickEmojis, id: \.self) { emoji in
+          Text(emoji).tag(emoji)
+        }
+      }
+      .pickerStyle(.palette)
+      .labelsHidden()
+      Divider()
+    }
     //    if hasPermission(.addReactions) {
     //      ControlGroup {
     //        Button {
@@ -349,6 +392,39 @@ struct EntityContextMenu<Entity>: ViewModifier {
   ) -> Bool {
     guard let guild else { return true }
     return guild.hasPermission(channel: channel, permission)
+  }
+
+  func quickReact(to message: DiscordChannel.Message, with emoji: String) {
+    guard let reaction = try? Reaction.unicodeEmoji(emoji) else { return }
+    let channelID = message.channel_id
+    let messageID = message.id
+    let client = gw.client
+    Task {
+      _ = try? await client.addMessageReaction(
+        channelId: channelID,
+        messageId: messageID,
+        emoji: reaction,
+        type: .normal
+      ).guardSuccess()
+    }
+    RecentReactionsStore.shared.record(emoji)
+    ImpactGenerator.impact(style: .light)
+  }
+
+  func removeReaction(from message: DiscordChannel.Message, emoji: String) {
+    guard let reaction = try? Reaction.unicodeEmoji(emoji) else { return }
+    let channelID = message.channel_id
+    let messageID = message.id
+    let client = gw.client
+    Task {
+      _ = try? await client.deleteOwnMessageReaction(
+        channelId: channelID,
+        messageId: messageID,
+        emoji: reaction,
+        type: .normal
+      ).guardSuccess()
+    }
+    ImpactGenerator.impact(style: .light)
   }
 
   func copyText(_ string: String) {

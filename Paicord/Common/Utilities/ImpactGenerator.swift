@@ -7,6 +7,9 @@
 //
 
 import SwiftUI
+#if os(macOS)
+  import AppKit
+#endif
 
 enum ImpactGenerator {
   #if os(iOS)
@@ -27,6 +30,17 @@ enum ImpactGenerator {
       @unknown default:
         break
       }
+    #elseif os(macOS)
+      let pattern: NSHapticFeedbackManager.FeedbackPattern
+      switch style {
+      case .light: pattern = .alignment
+      case .medium: pattern = .generic
+      case .heavy: pattern = .levelChange
+      }
+      NSHapticFeedbackManager.defaultPerformer.perform(
+        pattern,
+        performanceTime: .now
+      )
     #endif
   }
 

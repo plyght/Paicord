@@ -1,4 +1,10 @@
 import Foundation
+import os
+
+private let thumbHashDebugLog = os.Logger(
+  subsystem: "com.paicord.debug",
+  category: "ThumbHash"
+)
 
 /// Copyright (c) 2023 Evan Wallace
 ///
@@ -19,13 +25,24 @@ import Foundation
 /// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 /// SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-func thumbHashToRGBA(hash: Data) -> (Int, Int, Data) {
+func thumbHashToRGBA(hash: Data) -> (Int, Int, Data)? {
+  guard hash.count >= 5 else {
+    thumbHashDebugLog.error(
+      "thumbHashToRGBA: hash too short count=\(hash.count, privacy: .public)"
+    )
+    return nil
+  }
+  let b0 = hash[hash.startIndex]
+  let b1 = hash[hash.startIndex + 1]
+  let b2 = hash[hash.startIndex + 2]
+  let b3 = hash[hash.startIndex + 3]
+  let b4 = hash[hash.startIndex + 4]
   // Read the constants
-  let h0 = UInt32(hash[0])
-  let h1 = UInt32(hash[1])
-  let h2 = UInt32(hash[2])
-  let h3 = UInt16(hash[3])
-  let h4 = UInt16(hash[4])
+  let h0 = UInt32(b0)
+  let h1 = UInt32(b1)
+  let h2 = UInt32(b2)
+  let h3 = UInt16(b3)
+  let h4 = UInt16(b4)
   let header24 = h0 | (h1 << 8) | (h2 << 16)
   let header16 = h3 | (h4 << 8)
   let il_dc = header24 & 63
@@ -55,8 +72,15 @@ func thumbHashToRGBA(hash: Data) -> (Int, Int, Data) {
   var a_dc = Float32(1)
   var a_scale = Float32(1)
   if hasAlpha {
-    let ia_dc = hash[5] & 15
-    let ia_scale = hash[5] >> 4
+    guard hash.count >= 6 else {
+      thumbHashDebugLog.error(
+        "thumbHashToRGBA: alpha hash too short count=\(hash.count, privacy: .public)"
+      )
+      return nil
+    }
+    let b5 = hash[hash.startIndex + 5]
+    let ia_dc = b5 & 15
+    let ia_scale = b5 >> 4
     a_dc = Float32(ia_dc)
     a_scale = Float32(ia_scale)
     a_dc /= 15
@@ -71,8 +95,9 @@ func thumbHashToRGBA(hash: Data) -> (Int, Int, Data) {
     for cy in 0..<ny {
       var cx = cy > 0 ? 0 : 1
       while cx * ny < nx * (ny - cy) {
-        let iac =
-          (hash[ac_start + (ac_index >> 1)] >> ((ac_index & 1) << 2)) & 15
+        let byteIndex = hash.startIndex + ac_start + (ac_index >> 1)
+        guard byteIndex < hash.endIndex else { return ac }
+        let iac = (hash[byteIndex] >> ((ac_index & 1) << 2)) & 15
         var fac = Float32(iac)
         fac = (fac / 7.5 - 1) * scale
         ac.append(fac)
@@ -247,27 +272,40 @@ func thumbHashToApproximateAspectRatio(hash: Data) -> Float32 {
 #if os(macOS)
   import Cocoa
 
-  func thumbHashToImage(hash: Data) -> NSImage {
-    let (w, h, rgba) = thumbHashToRGBA(hash: hash)
-    let bitmap = NSBitmapImageRep(
-      bitmapDataPlanes: nil,
-      pixelsWide: w,
-      pixelsHigh: h,
-      bitsPerSample: 8,
-      samplesPerPixel: 4,
-      hasAlpha: true,
-      isPlanar: false,
-      colorSpaceName: .deviceRGB,
-      bytesPerRow: w * 4,
-      bitsPerPixel: 32
-    )!
+  func thumbHashToImage(hash: Data) -> NSImage? {
+    guard let (w, h, rgba) = thumbHashToRGBA(hash: hash), w > 0, h > 0 else {
+      thumbHashDebugLog.error(
+        "thumbHashToImage(macOS): thumbHashToRGBA returned nil or zero dims"
+      )
+      return nil
+    }
+    guard
+      let bitmap = NSBitmapImageRep(
+        bitmapDataPlanes: nil,
+        pixelsWide: w,
+        pixelsHigh: h,
+        bitsPerSample: 8,
+        samplesPerPixel: 4,
+        hasAlpha: true,
+        isPlanar: false,
+        colorSpaceName: .deviceRGB,
+        bytesPerRow: w * 4,
+        bitsPerPixel: 32
+      ),
+      let bitmapData = bitmap.bitmapData
+    else {
+      thumbHashDebugLog.error(
+        "thumbHashToImage(macOS): NSBitmapImageRep init failed w=\(w, privacy: .public) h=\(h, privacy: .public)"
+      )
+      return nil
+    }
     rgba.withUnsafeBytes { rgba in
       // Convert from unpremultiplied alpha to premultiplied alpha
       var rgba = rgba.baseAddress!.bindMemory(
         to: UInt8.self,
         capacity: rgba.count
       )
-      var to = bitmap.bitmapData!
+      var to = bitmapData
       let n = w * h
       var i = 0
       while i < n {
@@ -303,8 +341,10 @@ func thumbHashToApproximateAspectRatio(hash: Data) -> Float32 {
 #if os(iOS)
   import UIKit
 
-  func thumbHashToImage(hash: Data) -> UIImage {
-    var (w, h, rgba) = thumbHashToRGBA(hash: hash)
+  func thumbHashToImage(hash: Data) -> UIImage? {
+    guard var (w, h, rgba) = thumbHashToRGBA(hash: hash), w > 0, h > 0 else {
+      return nil
+    }
     rgba.withUnsafeMutableBytes { rgba in
       // Convert from unpremultiplied alpha to premultiplied alpha
       var rgba = rgba.baseAddress!.bindMemory(
@@ -330,22 +370,24 @@ func thumbHashToApproximateAspectRatio(hash: Data) -> Float32 {
         i += 1
       }
     }
-    let image = CGImage(
-      width: w,
-      height: h,
-      bitsPerComponent: 8,
-      bitsPerPixel: 32,
-      bytesPerRow: w * 4,
-      space: CGColorSpaceCreateDeviceRGB(),
-      bitmapInfo: CGBitmapInfo(
-        rawValue: CGBitmapInfo.byteOrder32Big.rawValue
-          | CGImageAlphaInfo.premultipliedLast.rawValue
-      ),
-      provider: CGDataProvider(data: rgba as CFData)!,
-      decode: nil,
-      shouldInterpolate: true,
-      intent: .perceptual
-    )
-    return UIImage(cgImage: image!)
+    guard let provider = CGDataProvider(data: rgba as CFData),
+      let image = CGImage(
+        width: w,
+        height: h,
+        bitsPerComponent: 8,
+        bitsPerPixel: 32,
+        bytesPerRow: w * 4,
+        space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGBitmapInfo(
+          rawValue: CGBitmapInfo.byteOrder32Big.rawValue
+            | CGImageAlphaInfo.premultipliedLast.rawValue
+        ),
+        provider: provider,
+        decode: nil,
+        shouldInterpolate: true,
+        intent: .perceptual
+      )
+    else { return nil }
+    return UIImage(cgImage: image)
   }
 #endif

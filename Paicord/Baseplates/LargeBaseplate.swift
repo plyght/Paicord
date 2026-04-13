@@ -38,17 +38,30 @@ struct LargeBaseplate: View {
     } detail: {
       Group {
         if let currentChannelStore {
-          ChatView(vm: currentChannelStore)
-            .inspector(isPresented: $showingInspector) {
+          ZStack(alignment: .trailing) {
+            ChatView(vm: currentChannelStore)
+              .frame(maxWidth: .infinity, maxHeight: .infinity)
+              .padding(.trailing, showingInspector ? 250 : 0)
+              .animation(nil, value: showingInspector)
+              .id(currentChannelStore.channelId)  // force view update
+
+            HStack(spacing: 0) {
+              Divider()
               MemberSidebarView(
                 guildStore: currentGuildStore,
                 channelStore: currentChannelStore
               )
-              .inspectorColumnWidth(min: 250, ideal: 250, max: 360)
+              .frame(width: 250)
             }
-            .id(currentChannelStore.channelId)  // force view update
-            .environment(\.guildStore, currentGuildStore)
-            .environment(\.channelStore, currentChannelStore)
+            .frame(width: 251)
+            .offset(x: showingInspector ? 0 : 251)
+            .animation(
+              .spring(response: 0.32, dampingFraction: 0.86),
+              value: showingInspector
+            )
+          }
+          .environment(\.guildStore, currentGuildStore)
+          .environment(\.channelStore, currentChannelStore)
         } else {
           // placeholder
           VStack {

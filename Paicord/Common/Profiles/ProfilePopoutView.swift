@@ -183,6 +183,216 @@ struct ProfilePopoutView: View {
         MarkdownText(content: bio, channelStore: channel)
           .equatable()
       }
+
+      if let conns = profile?.connected_accounts, !conns.isEmpty {
+        connectionsSection(conns)
+      }
+
+      if let mutuals = profile?.mutual_guilds, !mutuals.isEmpty {
+        mutualGuildsSection(mutuals)
+      }
+
+      if let friends = profile?.mutual_friends, !friends.isEmpty {
+        mutualFriendsSection(
+          friends,
+          totalCount: profile?.mutual_friends_count
+        )
+      }
+    }
+  }
+
+  @ViewBuilder
+  func sectionHeader(_ title: String) -> some View {
+    Text(title)
+      .font(.caption)
+      .fontWeight(.semibold)
+      .foregroundStyle(.secondary)
+      .textCase(.uppercase)
+      .padding(.top, 10)
+  }
+
+  @ViewBuilder
+  func connectionsSection(_ conns: [DiscordUser.PartialConnection]) -> some View
+  {
+    sectionHeader("Connections")
+    FlowLayout(xSpacing: 6, ySpacing: 6) {
+      ForEach(conns, id: \.id) { conn in
+        HStack(spacing: 6) {
+          Image(systemName: Self.connectionSymbol(for: conn.type))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+          Text(conn.name ?? Self.connectionDisplayName(conn.type))
+            .font(.caption)
+            .lineLimit(1)
+          if conn.verified {
+            Image(systemName: "checkmark.seal.fill")
+              .font(.caption2)
+              .foregroundStyle(.blue)
+          }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(
+          Capsule()
+            .strokeBorder(.white.opacity(0.08), lineWidth: 0.5)
+        )
+      }
+    }
+  }
+
+  @ViewBuilder
+  func mutualGuildsSection(_ mutuals: [DiscordUser.Profile.MutualGuild])
+    -> some View
+  {
+    sectionHeader(
+      "\(mutuals.count) Mutual Server\(mutuals.count == 1 ? "" : "s")"
+    )
+    ScrollView(.horizontal, showsIndicators: false) {
+      HStack(alignment: .top, spacing: 10) {
+        ForEach(mutuals, id: \.id) { mg in
+          mutualGuildItem(mg)
+        }
+      }
+      .padding(.vertical, 4)
+      .padding(.horizontal, 1)
+    }
+  }
+
+  @ViewBuilder
+  func mutualGuildItem(_ mg: DiscordUser.Profile.MutualGuild) -> some View {
+    let guild = gw.user.guilds[mg.id]
+    VStack(spacing: 4) {
+      Group {
+        if let icon = guild?.icon {
+          let url =
+            CDNEndpoint.guildIcon(guildId: mg.id, icon: icon).url + "?size=80"
+          WebImage(url: URL(string: url))
+            .resizable()
+            .scaledToFill()
+        } else {
+          let initials =
+            (guild?.name ?? "?")
+            .split(separator: " ")
+            .compactMap(\.first)
+            .reduce("") { $0 + String($1) }
+          Rectangle()
+            .fill(.gray.opacity(0.3))
+            .overlay(
+              Text(initials)
+                .font(.caption)
+                .bold()
+                .minimumScaleFactor(0.5)
+                .lineLimit(1)
+                .padding(2)
+            )
+        }
+      }
+      .frame(width: 48, height: 48)
+      .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+      Text(mg.nick ?? guild?.name ?? "Unknown")
+        .font(.caption2)
+        .lineLimit(1)
+        .frame(maxWidth: 60)
+    }
+  }
+
+  @ViewBuilder
+  func mutualFriendsSection(_ friends: [PartialUser], totalCount: Int?)
+    -> some View
+  {
+    let count = totalCount ?? friends.count
+    sectionHeader("\(count) Mutual Friend\(count == 1 ? "" : "s")")
+    ScrollView(.horizontal, showsIndicators: false) {
+      HStack(alignment: .top, spacing: 10) {
+        ForEach(friends, id: \.id) { friend in
+          mutualFriendItem(friend)
+        }
+      }
+      .padding(.vertical, 4)
+      .padding(.horizontal, 1)
+    }
+  }
+
+  @ViewBuilder
+  func mutualFriendItem(_ friend: PartialUser) -> some View {
+    VStack(spacing: 4) {
+      Group {
+        if let url = Utils.fetchUserAvatarURL(
+          member: nil,
+          guildId: nil,
+          user: friend,
+          animated: false
+        ) {
+          WebImage(url: url)
+            .resizable()
+            .scaledToFill()
+        } else {
+          Circle().fill(.gray.opacity(0.3))
+        }
+      }
+      .frame(width: 48, height: 48)
+      .clipShape(Circle())
+
+      Text(friend.global_name ?? friend.username ?? "Unknown")
+        .font(.caption2)
+        .lineLimit(1)
+        .frame(maxWidth: 60)
+    }
+  }
+
+  static func connectionSymbol(for service: DiscordUser.Connection.Service)
+    -> String
+  {
+    switch service.rawValue {
+    case "spotify", "amazon-music": return "music.note"
+    case "steam", "xbox", "playstation", "battlenet", "epicgames",
+      "riotgames", "leagueoflegends", "roblox", "bungie":
+      return "gamecontroller.fill"
+    case "github": return "chevron.left.forwardslash.chevron.right"
+    case "youtube", "twitch": return "play.rectangle.fill"
+    case "twitter", "bluesky", "mastodon": return "bubble.left.fill"
+    case "instagram", "facebook", "tiktok": return "camera.fill"
+    case "reddit": return "newspaper.fill"
+    case "paypal", "ebay": return "creditcard.fill"
+    case "crunchyroll": return "tv.fill"
+    case "domain": return "globe"
+    default: return "link"
+    }
+  }
+
+  static func connectionDisplayName(_ service: DiscordUser.Connection.Service)
+    -> String
+  {
+    switch service.rawValue {
+    case "amazon-music": return "Amazon Music"
+    case "battlenet": return "Battle.net"
+    case "bungie": return "Bungie"
+    case "bluesky": return "Bluesky"
+    case "crunchyroll": return "Crunchyroll"
+    case "domain": return "Domain"
+    case "ebay": return "eBay"
+    case "epicgames": return "Epic Games"
+    case "facebook": return "Facebook"
+    case "github": return "GitHub"
+    case "instagram": return "Instagram"
+    case "leagueoflegends": return "League of Legends"
+    case "mastodon": return "Mastodon"
+    case "paypal": return "PayPal"
+    case "playstation": return "PlayStation"
+    case "reddit": return "Reddit"
+    case "riotgames": return "Riot Games"
+    case "roblox": return "Roblox"
+    case "spotify": return "Spotify"
+    case "skype": return "Skype"
+    case "steam": return "Steam"
+    case "tiktok": return "TikTok"
+    case "twitch": return "Twitch"
+    case "twitter": return "X"
+    case "xbox": return "Xbox"
+    case "youtube": return "YouTube"
+    default: return service.rawValue.capitalized
     }
   }
 

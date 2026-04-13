@@ -40,6 +40,11 @@ struct ReactionsView: View {
               type: reaction.isBurst ? .burst : .normal
             )
             .guardSuccess()
+            if reaction.emoji.id == nil, let name = reaction.emoji.name {
+              await MainActor.run {
+                RecentReactionsStore.shared.record(name)
+              }
+            }
           }
         } catch: { _ in
         } label: {

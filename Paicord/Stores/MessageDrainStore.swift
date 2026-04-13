@@ -500,7 +500,7 @@ class MessageDrainStore: DiscordDataStore {
     // notify ui to scroll to the newly pending message
     NotificationCenter.default.post(
       name: .chatViewShouldScrollToBottom,
-      object: ["channelId": channel]
+      object: ["channelId": channel, "immediate": true]
     )
 
     startQueueIfNeeded()

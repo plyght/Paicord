@@ -18,6 +18,12 @@ struct MessageCell: View {
     static let avatarSize: CGFloat = 35
   #endif
 
+  static let doubleTapDefaultEmoji: String = "❤️"
+  static let swipeReplyThreshold: CGFloat = 60
+  static let swipeReplyMaxOffset: CGFloat = 90
+
+  @Environment(\.gateway) var gw
+
   var message: DiscordChannel.Message
   var priorMessage: DiscordChannel.Message?
   var channelStore: ChannelStore
@@ -25,6 +31,20 @@ struct MessageCell: View {
   var currentUserRoles: [RoleSnowflake]?
   @State var cellHighlighted = false
   @State private var mentionPulse: Double = 0
+  @State private var swipeOffset: CGFloat = 0
+  @State private var swipeHapticFired = false
+  @State private var showQuickReactions = false
+  #if os(macOS)
+    @State private var macSwipeState = CellSwipeState()
+  #endif
+
+  var effectiveSwipeOffset: CGFloat {
+    #if os(macOS)
+      return macSwipeState.offset
+    #else
+      return swipeOffset
+    #endif
+  }
 
   init(
     for message: DiscordChannel.Message,
@@ -38,6 +58,66 @@ struct MessageCell: View {
     self.channelStore = channel
     self.currentUserID = currentUserID
     self.currentUserRoles = currentUserRoles
+  }
+
+  func reactWithDefaultEmoji() {
+    reactWithUnicode(Self.doubleTapDefaultEmoji)
+    ImpactGenerator.impact(style: .light)
+  }
+
+  func reactWithUnicode(_ emoji: String) {
+    guard let reaction = try? Reaction.unicodeEmoji(emoji) else { return }
+    let channelID = message.channel_id
+    let messageID = message.id
+    let client = gw.client
+    Task {
+      _ = try? await client.addMessageReaction(
+        channelId: channelID,
+        messageId: messageID,
+        emoji: reaction,
+        type: .normal
+      ).guardSuccess()
+    }
+    RecentReactionsStore.shared.record(emoji)
+  }
+
+  func removeUnicodeReaction(_ emoji: String) {
+    guard let reaction = try? Reaction.unicodeEmoji(emoji) else { return }
+    let channelID = message.channel_id
+    let messageID = message.id
+    let client = gw.client
+    Task {
+      _ = try? await client.deleteOwnMessageReaction(
+        channelId: channelID,
+        messageId: messageID,
+        emoji: reaction,
+        type: .normal
+      ).guardSuccess()
+    }
+  }
+
+  func toggleUnicodeReaction(_ emoji: String) {
+    if appliedUnicodeEmojis.contains(emoji) {
+      removeUnicodeReaction(emoji)
+    } else {
+      reactWithUnicode(emoji)
+    }
+  }
+
+  var appliedUnicodeEmojis: Set<String> {
+    guard let reactions = channelStore.reactions[message.id] else { return [] }
+    var out: Set<String> = []
+    for (emoji, reaction) in reactions where reaction.selfReacted {
+      if emoji.id == nil, let name = emoji.name {
+        out.insert(name)
+      }
+    }
+    return out
+  }
+
+  func beginReply() {
+    let vm = ChatView.InputBar.vm(for: channelStore)
+    vm.messageAction = .reply(message: message, mention: true)
   }
 
   var userMentioned: Bool {
@@ -66,32 +146,89 @@ struct MessageCell: View {
       ) < 300 && message.referenced_message == nil
       && message.type == .default
 
-    Group {
-      // Content
-      switch message.type {
-      case .default, .reply:
-        DefaultMessage(
-          message: message,
-          channelStore: channelStore,
-          inline: inline
-        )
-        .equatable()
-      case .chatInputCommand:
-        ChatInputCommandMessage(message: message, channelStore: channelStore)
+    ZStack(alignment: .leading) {
+      let progress = min(1, effectiveSwipeOffset / Self.swipeReplyThreshold)
+      Image(systemName: "arrowshape.turn.up.left.fill")
+        .font(.title3)
+        .foregroundStyle(.secondary)
+        .opacity(Double(progress))
+        .scaleEffect(0.6 + 0.4 * progress)
+        .padding(.leading, 12)
+        .allowsHitTesting(false)
+
+      Group {
+        // Content
+        switch message.type {
+        case .default, .reply:
+          DefaultMessage(
+            message: message,
+            channelStore: channelStore,
+            inline: inline
+          )
           .equatable()
-      default:
-        HStack {
-          AvatarBalancing()
-          (Text(Image(systemName: "xmark.circle.fill"))
-            + Text(" Unsupported message type \(message.type)"))
-            .foregroundStyle(.red)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        case .chatInputCommand:
+          ChatInputCommandMessage(message: message, channelStore: channelStore)
+            .equatable()
+        default:
+          HStack {
+            AvatarBalancing()
+            (Text(Image(systemName: "xmark.circle.fill"))
+              + Text(" Unsupported message type \(message.type)"))
+              .foregroundStyle(.red)
+              .frame(maxWidth: .infinity, alignment: .leading)
+          }
         }
       }
+      .offset(x: effectiveSwipeOffset)
     }
     .background(Color.almostClear)
     .padding(.horizontal, 10)
     .padding(.vertical, 2)
+    .highPriorityGesture(
+      TapGesture(count: 2).onEnded {
+        reactWithDefaultEmoji()
+      }
+    )
+    .highPriorityGesture(
+      LongPressGesture(minimumDuration: 0.35).onEnded { _ in
+        ImpactGenerator.impact(style: .medium)
+        showQuickReactions = true
+      }
+    )
+    .popover(isPresented: $showQuickReactions, arrowEdge: .top) {
+      QuickReactionPicker(applied: appliedUnicodeEmojis) { emoji in
+        showQuickReactions = false
+        toggleUnicodeReaction(emoji)
+      }
+      .presentationCompactAdaptation(.popover)
+      .presentationBackground(.clear)
+    }
+    #if os(iOS)
+      .simultaneousGesture(
+        DragGesture(minimumDistance: 15)
+          .onChanged { value in
+            guard abs(value.translation.width) > abs(value.translation.height)
+            else { return }
+            let raw = max(0, value.translation.width)
+            let damped = min(Self.swipeReplyMaxOffset, raw * 0.7)
+            swipeOffset = damped
+            if !swipeHapticFired && damped >= Self.swipeReplyThreshold {
+              swipeHapticFired = true
+              ImpactGenerator.impact(style: .medium)
+            }
+          }
+          .onEnded { value in
+            let triggered = swipeOffset >= Self.swipeReplyThreshold
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+              swipeOffset = 0
+            }
+            swipeHapticFired = false
+            if triggered {
+              beginReply()
+            }
+          }
+      )
+    #endif
     .overlay {
       if userMentioned {
         Color.accentColor.opacity(mentionPulse * 0.18)
@@ -112,7 +249,23 @@ struct MessageCell: View {
       withAnimation(.easeIn(duration: 1.1).delay(0.35)) { mentionPulse = 0 }
     }
     #if os(macOS)
-      .onHover { self.cellHighlighted = $0 }
+      .onHover { hovered in
+        self.cellHighlighted = hovered
+        if hovered {
+          let state = self.macSwipeState
+          let commit: () -> Void = { self.beginReply() }
+          MacScrollMonitor.shared.active = { event in
+            state.handle(
+              event,
+              threshold: Self.swipeReplyThreshold,
+              maxOffset: Self.swipeReplyMaxOffset,
+              onCommit: commit
+            )
+          }
+        } else if !self.macSwipeState.tracking {
+          MacScrollMonitor.shared.active = nil
+        }
+      }
       .background(
         cellHighlighted
           ? Color(NSColor.secondaryLabelColor).opacity(0.1) : .clear

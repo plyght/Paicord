@@ -19,7 +19,9 @@ struct ChatView: View {
   @Environment(\.userInterfaceIdiom) var idiom
   @Environment(\.theme) var theme
 
-  @State private var currentScrollPosition: MessageSnowflake?
+  @State private var isNearBottom: Bool = true
+  @State private var scrollProxy: ScrollViewProxy? = nil
+  private static let bottomSentinelId: String = "__paicord_bottom_sentinel__"
 
   var drain: MessageDrainStore { gw.messageDrain }
 
@@ -52,6 +54,7 @@ struct ChatView: View {
     let shouldAnimate =
       orderedMessages.last?.author?.id != currentUserID
     VStack(spacing: 20) {
+      ScrollViewReader { proxy in
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 0) {
           if !vm.messages.isEmpty {
@@ -124,9 +127,13 @@ struct ChatView: View {
           //          }
 
           // message drain view, represents messages being sent etc
+          Color.clear
+            .frame(height: 1)
+            .id(Self.bottomSentinelId)
         }
         .scrollTargetLayout()
       }
+      .onAppear { self.scrollProxy = proxy }
       .id(vm.channelId)
       #if os(macOS)
         // esc to scroll to bottom of chat, its a little jank
@@ -142,17 +149,11 @@ struct ChatView: View {
           return .handled
         }
       #endif
-      .scrollPosition(id: $currentScrollPosition, anchor: .bottom)
-      // causes issues with input bar height changes:
-      // currently, the input bar changing size can cause the scrollview position to jump unexpectedly.
-      // not sure how to fix.
+      .modifier(ChatScrollNearBottomTracker(isNearBottom: $isNearBottom))
       .bottomAnchored()
       .maxHeight(.infinity)
       .overlay(alignment: .bottomTrailing) {
-        let lastMessageIDs = Set(orderedMessages.suffix(10).map { $0.id })
-        if let current = currentScrollPosition,
-          !lastMessageIDs.contains(current)
-        {
+        if !isNearBottom {
           Button(action: {
             NotificationCenter.default.post(
               name: .chatViewShouldScrollToBottom,
@@ -181,6 +182,7 @@ struct ChatView: View {
           .transition(.blurReplace.animation(.default))
         }
       }
+      }  // ScrollViewReader
 
       #if os(iOS)
         if vm.hasPermission(.sendMessages) {
@@ -223,22 +225,13 @@ struct ChatView: View {
         let channelId = info["channelId"] as? ChannelSnowflake,
         channelId == vm.channelId
       else { return }
-      let isNearBottom =
-        (orderedMessages.suffix(10).map(\.id)
-        + pendingMessages.values.compactMap(\.nonce).map({
-          MessageSnowflake($0.asString)
-        }))
-        .contains {
-          $0 == self.currentScrollPosition
-        }
       let immediate = (info["immediate"] as? Bool == true)
-      guard isNearBottom || immediate else {
-        return
-      }
-      let pending: MessageSnowflake? = info["id"] as? MessageSnowflake
-      withAnimation(immediate ? .default : nil) {
-        self.currentScrollPosition =
-          pending ?? orderedMessages.last?.id ?? self.currentScrollPosition
+      guard self.isNearBottom || immediate else { return }
+      Task { @MainActor in
+        try? await Task.sleep(for: .milliseconds(16))
+        withAnimation(immediate ? .default : nil) {
+          self.scrollProxy?.scrollTo(Self.bottomSentinelId, anchor: .bottom)
+        }
       }
     }  // handle scroll to bottom event
     .onReceive(
@@ -249,7 +242,9 @@ struct ChatView: View {
         channelId == vm.channelId,
         let messageId = info["messageId"] as? MessageSnowflake
       else { return }
-      self.currentScrollPosition = messageId
+      withAnimation(.default) {
+        self.scrollProxy?.scrollTo(messageId, anchor: .center)
+      }
     }  // handle scroll to ID event
   }
 
@@ -278,6 +273,24 @@ struct ChatView: View {
       Task.detached {
         try await gw.client.triggerTypingIndicator(channelId: .makeFake())
       }
+    }
+  }
+}
+
+private struct ChatScrollNearBottomTracker: ViewModifier {
+  @Binding var isNearBottom: Bool
+  func body(content: Content) -> some View {
+    if #available(iOS 18.0, macOS 15.0, *) {
+      content.onScrollGeometryChange(for: Bool.self) { geo in
+        let distanceFromBottom =
+          geo.contentSize.height
+          - (geo.contentOffset.y + geo.containerSize.height)
+        return distanceFromBottom < 120
+      } action: { _, newValue in
+        if isNearBottom != newValue { isNearBottom = newValue }
+      }
+    } else {
+      content
     }
   }
 }

@@ -15,35 +15,44 @@ import SwiftUIX
       @Binding var text: String
       var submit: () -> Void
       var onPasteFiles: (([URL]) -> Void)?
+      var inputVM: InputVM?
 
       init(
         _ prompt: String,
         text: Binding<String>,
         submit: @escaping () -> Void = {},
-        onPasteFiles: (([URL]) -> Void)? = nil
+        onPasteFiles: (([URL]) -> Void)? = nil,
+        inputVM: InputVM? = nil
       ) {
         self.prompt = prompt
         self._text = text
         self.submit = submit
         self.onPasteFiles = onPasteFiles
+        self.inputVM = inputVM
       }
 
       var body: some View {
-        _TextView(text: $text, onSubmit: submit, onPasteFiles: onPasteFiles)
-          .overlay(alignment: .leading) {
-            if text.isEmpty {
-              Text(prompt)
-                .foregroundStyle(.secondary)
-                .padding(5)
-                .allowsHitTesting(false)
-            }
+        _TextView(
+          text: $text,
+          onSubmit: submit,
+          onPasteFiles: onPasteFiles,
+          inputVM: inputVM
+        )
+        .overlay(alignment: .leading) {
+          if text.isEmpty {
+            Text(prompt)
+              .foregroundStyle(.secondary)
+              .padding(5)
+              .allowsHitTesting(false)
           }
+        }
       }
 
       private struct _TextView: NSViewRepresentable {
         @Binding var text: String
         var onSubmit: () -> Void
         var onPasteFiles: (([URL]) -> Void)?
+        var inputVM: InputVM?
         let maxHeight: CGFloat = 150
 
         func makeNSView(context: Context) -> NSScrollView {
@@ -73,6 +82,49 @@ import SwiftUIX
           textView.delegate = context.coordinator
           textView.onSubmit = onSubmit
           textView.onPasteFiles = onPasteFiles
+          textView.mentionVM = inputVM
+          context.coordinator.vm = inputVM
+          context.coordinator.textView = textView
+          if let vm = inputVM {
+            let accept: () -> Void = { [weak textView] in
+              guard let tv = textView, let ts = tv.textStorage else { return }
+              guard let (candidate, range) = vm.consumeSelectedMention()
+              else { return }
+              let display = "@\(candidate.displayName)"
+              let chip = NSAttributedString(
+                string: display,
+                attributes: _TextView.mentionAttributes(
+                  id: candidate.id.rawValue
+                )
+              )
+              let spacer = NSAttributedString(
+                string: " ",
+                attributes: _TextView.defaultTypingAttributes()
+              )
+              let combined = NSMutableAttributedString()
+              combined.append(chip)
+              combined.append(spacer)
+              ts.beginEditing()
+              ts.replaceCharacters(in: range, with: combined)
+              ts.endEditing()
+              let newCursor = range.location + combined.length
+              tv.setSelectedRange(
+                NSRange(location: newCursor, length: 0)
+              )
+              tv.typingAttributes = _TextView.defaultTypingAttributes()
+              context.coordinator.parent.text = _TextView.serialize(
+                tv.attributedString()
+              )
+            }
+            vm.acceptMentionFromUI = accept
+            textView.onAcceptMention = accept
+            textView.onCancelMention = { [weak vm] in
+              vm?.clearMention()
+            }
+            textView.onMentionMove = { [weak vm] delta in
+              vm?.moveMentionSelection(by: delta)
+            }
+          }
           textView.minSize = .zero
           textView.maxSize = NSSize(
             width: CGFloat.greatestFiniteMagnitude,
@@ -118,9 +170,69 @@ import SwiftUIX
             return
           }
 
-          if textView.string != text {
-            textView.string = text
+          let current = _TextView.serialize(textView.attributedString())
+          if current != text {
+            textView.textStorage?.setAttributedString(
+              NSAttributedString(
+                string: text,
+                attributes: _TextView.defaultTypingAttributes()
+              )
+            )
           }
+          if let subTV = textView as? SubmissiveTextView {
+            subTV.mentionVM = inputVM
+          }
+          context.coordinator.vm = inputVM
+        }
+
+        static let mentionAttributeKey = NSAttributedString.Key(
+          "PaicordMentionID"
+        )
+
+        static func defaultTypingAttributes() -> [NSAttributedString.Key: Any]
+        {
+          return [
+            .font: NSFont.systemFont(ofSize: NSFont.systemFontSize),
+            .foregroundColor: NSColor.labelColor,
+          ]
+        }
+
+        static func mentionAttributes(id: String)
+          -> [NSAttributedString.Key: Any]
+        {
+          return [
+            .font: NSFont.systemFont(
+              ofSize: NSFont.systemFontSize,
+              weight: .semibold
+            ),
+            .foregroundColor: NSColor.controlAccentColor,
+            .backgroundColor: NSColor.controlAccentColor.withAlphaComponent(
+              0.18
+            ),
+            mentionAttributeKey: id,
+          ]
+        }
+
+        static func serialize(_ attributed: NSAttributedString) -> String {
+          var out = ""
+          let ns = attributed.string as NSString
+          var i = 0
+          while i < ns.length {
+            var effective = NSRange(location: 0, length: 0)
+            let mentionID = attributed.attribute(
+              mentionAttributeKey,
+              at: i,
+              effectiveRange: &effective
+            ) as? String
+            if let id = mentionID {
+              out.append("<@\(id)>")
+              i = effective.location + effective.length
+            } else {
+              out.append(ns.substring(with: NSRange(location: i, length: 1)))
+              i += 1
+            }
+          }
+          return out
         }
 
         func makeCoordinator() -> Coordinator {
@@ -129,6 +241,8 @@ import SwiftUIX
 
         class Coordinator: NSObject, NSTextViewDelegate {
           var parent: _TextView
+          var vm: InputVM?
+          weak var textView: NSTextView?
 
           init(_ parent: _TextView) {
             self.parent = parent
@@ -138,13 +252,58 @@ import SwiftUIX
             guard let textView = notification.object as? NSTextView else {
               return
             }
-            parent.text = textView.string
+            parent.text = _TextView.serialize(textView.attributedString())
+            processMentionState(textView: textView)
+          }
+
+          func textViewDidChangeSelection(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else {
+              return
+            }
+            let sel = textView.selectedRange()
+            if sel.length == 0 {
+              textView.typingAttributes = _TextView.defaultTypingAttributes()
+            }
+            processMentionState(textView: textView)
+          }
+
+          private func processMentionState(textView: NSTextView) {
+            guard let vm else { return }
+            let loc = textView.selectedRange().location
+            let ns = textView.string as NSString
+            let prefixRange = NSRange(
+              location: 0,
+              length: min(loc, ns.length)
+            )
+            let atRange = ns.range(
+              of: "@",
+              options: .backwards,
+              range: prefixRange
+            )
+            if atRange.location != NSNotFound {
+              let attributed = textView.attributedString()
+              if atRange.location < attributed.length,
+                attributed.attribute(
+                  _TextView.mentionAttributeKey,
+                  at: atRange.location,
+                  effectiveRange: nil
+                ) != nil
+              {
+                vm.clearMention()
+                return
+              }
+            }
+            vm.updateMentionState(from: textView.string, cursor: loc)
           }
         }
 
         class SubmissiveTextView: NSTextView {
           var onSubmit: (() -> Void)?
           var onPasteFiles: (([URL]) -> Void)?
+          weak var mentionVM: InputVM?
+          var onAcceptMention: (() -> Void)?
+          var onCancelMention: (() -> Void)?
+          var onMentionMove: ((Int) -> Void)?
           weak var undoManagerRef: UndoManager?
 
           init(
@@ -273,6 +432,23 @@ import SwiftUIX
           }
 
           override func keyDown(with event: NSEvent) {
+            if let vm = mentionVM, vm.isMentioning, !vm.mentionResults.isEmpty {
+              switch event.keyCode {
+              case 125:  // down arrow
+                onMentionMove?(1)
+                return
+              case 126:  // up arrow
+                onMentionMove?(-1)
+                return
+              case 36, 48:  // return, tab
+                onAcceptMention?()
+                return
+              case 53:  // escape
+                onCancelMention?()
+                return
+              default: break
+              }
+            }
             if event.keyCode == 36 {  // Return key
               let shiftPressed = event.modifierFlags.contains(.shift)
               if !shiftPressed {

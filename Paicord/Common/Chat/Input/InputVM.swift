@@ -29,6 +29,172 @@ extension ChatView.InputBar {
     /// The text field content
     var content: String = ""
 
+    #if os(macOS)
+      struct MentionCandidate: Identifiable, Equatable {
+        let id: UserSnowflake
+        let user: PartialUser
+        let member: Guild.PartialMember?
+        let displayName: String
+
+        static func == (lhs: MentionCandidate, rhs: MentionCandidate) -> Bool {
+          lhs.id == rhs.id && lhs.displayName == rhs.displayName
+        }
+      }
+
+      var mentionTriggerRange: NSRange = NSRange(location: NSNotFound, length: 0)
+      var mentionQuery: String = ""
+      var mentionResults: [MentionCandidate] = []
+      var mentionSelectedIndex: Int = 0
+
+      @ObservationIgnored
+      var acceptMentionFromUI: (() -> Void)? = nil
+
+      var isMentioning: Bool {
+        mentionTriggerRange.location != NSNotFound
+      }
+
+      func clearMention() {
+        mentionTriggerRange = NSRange(location: NSNotFound, length: 0)
+        mentionQuery = ""
+        mentionResults = []
+        mentionSelectedIndex = 0
+      }
+
+      func updateMentionState(from text: String, cursor: Int) {
+        let ns = text as NSString
+        let clamped = max(0, min(cursor, ns.length))
+        let prefixRange = NSRange(location: 0, length: clamped)
+        let atRange = ns.range(
+          of: "@",
+          options: .backwards,
+          range: prefixRange
+        )
+        guard atRange.location != NSNotFound else {
+          clearMention()
+          return
+        }
+        if atRange.location > 0 {
+          let prev = ns.character(at: atRange.location - 1)
+          if let scalar = UnicodeScalar(prev),
+            !CharacterSet.whitespacesAndNewlines.contains(scalar)
+          {
+            clearMention()
+            return
+          }
+        }
+        let queryStart = atRange.location + 1
+        let queryLen = clamped - queryStart
+        guard queryLen >= 0 else {
+          clearMention()
+          return
+        }
+        let query = ns.substring(
+          with: NSRange(location: queryStart, length: queryLen)
+        )
+        if query.rangeOfCharacter(from: .whitespacesAndNewlines) != nil {
+          clearMention()
+          return
+        }
+        if query.count > 32 {
+          clearMention()
+          return
+        }
+        mentionTriggerRange = NSRange(
+          location: atRange.location,
+          length: clamped - atRange.location
+        )
+        mentionQuery = query
+        mentionResults = searchMembers(query: query)
+        if mentionSelectedIndex >= mentionResults.count {
+          mentionSelectedIndex = 0
+        }
+      }
+
+      func moveMentionSelection(by delta: Int) {
+        guard !mentionResults.isEmpty else { return }
+        let n = mentionResults.count
+        mentionSelectedIndex = ((mentionSelectedIndex + delta) % n + n) % n
+      }
+
+      func consumeSelectedMention() -> (MentionCandidate, NSRange)? {
+        guard mentionTriggerRange.location != NSNotFound,
+          mentionSelectedIndex >= 0,
+          mentionSelectedIndex < mentionResults.count
+        else { return nil }
+        let candidate = mentionResults[mentionSelectedIndex]
+        let range = mentionTriggerRange
+        clearMention()
+        return (candidate, range)
+      }
+
+      func acceptMention(in text: String) -> (String, Int)? {
+        guard mentionTriggerRange.location != NSNotFound,
+          mentionSelectedIndex >= 0,
+          mentionSelectedIndex < mentionResults.count
+        else { return nil }
+        let candidate = mentionResults[mentionSelectedIndex]
+        let replacement = "<@\(candidate.id.rawValue)> "
+        let ns = text as NSString
+        guard
+          mentionTriggerRange.location + mentionTriggerRange.length <= ns.length
+        else {
+          clearMention()
+          return nil
+        }
+        let newText = ns.replacingCharacters(
+          in: mentionTriggerRange,
+          with: replacement
+        )
+        let newCursor =
+          mentionTriggerRange.location + (replacement as NSString).length
+        clearMention()
+        return (newText, newCursor)
+      }
+
+      private func searchMembers(query: String) -> [MentionCandidate] {
+        let members = channelStore.guildStore?.members ?? [:]
+        let q = query.lowercased()
+        var scored: [(Int, MentionCandidate)] = []
+        for (_, member) in members {
+          guard let user = member.user else { continue }
+          let display = member.nick ?? user.global_name ?? user.username
+          let dl = display.lowercased()
+          let ul = user.username.lowercased()
+          let rank: Int
+          if q.isEmpty {
+            rank = 0
+          } else if dl.hasPrefix(q) {
+            rank = 0
+          } else if ul.hasPrefix(q) {
+            rank = 1
+          } else if dl.contains(q) || ul.contains(q) {
+            rank = 2
+          } else {
+            continue
+          }
+          scored.append(
+            (
+              rank,
+              MentionCandidate(
+                id: user.id,
+                user: user.toPartialUser(),
+                member: member,
+                displayName: display
+              )
+            )
+          )
+        }
+        return
+          scored
+          .sorted { a, b in
+            if a.0 != b.0 { return a.0 < b.0 }
+            return a.1.displayName.lowercased() < b.1.displayName.lowercased()
+          }
+          .prefix(6)
+          .map { $0.1 }
+      }
+    #endif
+
     private var appCreatedTempFiles: Set<URL> = []
 
     func trackTempFile(_ url: URL) {
@@ -243,6 +409,9 @@ extension ChatView.InputBar {
       uploadItems = []
       messageAction = nil
       content = ""
+      #if os(macOS)
+        clearMention()
+      #endif
       isResetting = false
     }
 

@@ -12,6 +12,12 @@ import PaicordLib
 import SDWebImageSwiftUI
 import Speech
 import SwiftUIX
+import os
+
+private let attachmentDebugLog = os.Logger(
+  subsystem: "com.paicord.debug",
+  category: "Attachments"
+)
 
 #if canImport(AppKit)
   import AppKit
@@ -105,11 +111,16 @@ extension MessageCell {
       private let maxHeight: CGFloat = 300
 
       var body: some View {
+        let ratio = attachment.aspectRatio ?? (maxWidth / maxHeight)
+        let width = min(maxWidth, maxHeight * ratio)
+        let height = width / ratio
+        let _: Void = attachmentDebugLog.debug(
+          "AttachmentSizedView.body w=\(attachment.width ?? -1, privacy: .public) h=\(attachment.height ?? -1, privacy: .public) ratio=\(ratio, privacy: .public) frame=\(width, privacy: .public)x\(height, privacy: .public)"
+        )
         content
-          .aspectRatio(attachment.aspectRatio, contentMode: .fit)
+          .aspectRatio(ratio, contentMode: .fit)
           .clipShape(.rounded)
-          .frame(maxWidth: maxWidth, maxHeight: maxHeight, alignment: .leading)
-          .fixedSize(horizontal: false, vertical: true)
+          .frame(width: width, height: height, alignment: .leading)
       }
     }
 
@@ -140,25 +151,73 @@ extension MessageCell {
       // preview for image
       struct ImageView: View {
         var attachment: DiscordMedia
-        var body: some View {
-          AnimatedImage(url: URL(string: attachment.proxyurl)) {
-            if let placeholder = attachment.placeholder,
-              let data = Data(base64Encoded: placeholder)
-            {
-              let img = thumbHashToImage(hash: data)
-              #if os(macOS)
-                Image(nsImage: img)
-                  .resizable()
-              #else
-                Image(uiImage: img)
-                  .resizable()
-              #endif
-            } else {
-              Color.gray.opacity(0.2)
-            }
 
+        private var thumbnailPixelSize: CGSize {
+          #if os(iOS)
+            let scale = UIScreen.main.scale
+          #else
+            let scale: CGFloat = 2
+          #endif
+          let rawWidth = attachment.width.map { CGFloat($0) } ?? 500
+          let rawHeight = attachment.height.map { CGFloat($0) } ?? 300
+          let width = min(max(rawWidth, 1), 500)
+          let height = min(max(rawHeight, 1), 300)
+          return CGSize(width: width * scale, height: height * scale)
+        }
+
+        @ViewBuilder
+        private var placeholderView: some View {
+          let _: Void = {
+            let ph = attachment.placeholder ?? "<nil>"
+            let decoded = attachment.placeholder.flatMap { Data(base64Encoded: $0) }
+            attachmentDebugLog.debug(
+              "placeholderView: placeholder=\(ph, privacy: .public) decodedBytes=\(decoded?.count ?? -1, privacy: .public)"
+            )
+          }()
+          if let placeholder = attachment.placeholder,
+            let data = Data(base64Encoded: placeholder),
+            data.count >= 5,
+            let img = thumbHashToImage(hash: data)
+          {
+            #if os(macOS)
+              Image(nsImage: img)
+                .resizable()
+            #else
+              Image(uiImage: img)
+                .resizable()
+            #endif
+          } else {
+            Color.gray.opacity(0.2)
           }
-          .resizable()
+        }
+
+        private var thumbnailSizeValue: NSValue {
+          #if os(macOS)
+            return NSValue(size: thumbnailPixelSize)
+          #else
+            return NSValue(cgSize: thumbnailPixelSize)
+          #endif
+        }
+
+        var body: some View {
+          let _: Void = attachmentDebugLog.debug(
+            "ImageView.body type=\(String(describing: attachment.type), privacy: .public) pxSize=\(self.thumbnailPixelSize.width, privacy: .public)x\(self.thumbnailPixelSize.height, privacy: .public) url=\(attachment.proxyurl, privacy: .public)"
+          )
+          if attachment.type == .gif {
+            AnimatedImage(url: URL(string: attachment.proxyurl)) {
+              placeholderView
+            }
+            .resizable()
+          } else {
+            WebImage(
+              url: URL(string: attachment.proxyurl),
+              context: [.imageThumbnailPixelSize: thumbnailSizeValue]
+            ) { image in
+              image.resizable()
+            } placeholder: {
+              placeholderView
+            }
+          }
         }
       }
 
@@ -166,12 +225,13 @@ extension MessageCell {
         var attachment: DiscordMedia
         @State var wantsPlayback: Bool = false
 
-        var poster: URL {
-          let url = URL(string: attachment.proxyurl)!
-          var urlcomponents = URLComponents(
-            url: url,
-            resolvingAgainstBaseURL: false
-          )!
+        var poster: URL? {
+          guard let url = URL(string: attachment.proxyurl),
+            var urlcomponents = URLComponents(
+              url: url,
+              resolvingAgainstBaseURL: false
+            )
+          else { return nil }
           // replace host with media.discordapp.net
           urlcomponents.host = "media.discordapp.net"
           // add query parameter "format=png" to get poster image
@@ -179,12 +239,15 @@ extension MessageCell {
             (urlcomponents.queryItems ?? []) + [
               URLQueryItem(name: "format", value: "png")
             ]
-          return urlcomponents.url!
+          return urlcomponents.url
         }
         var body: some View {
           if !wantsPlayback {
-            WebImage(url: poster)
-              .resizable()
+            WebImage(url: poster) { image in
+              image.resizable()
+            } placeholder: {
+              Color.gray.opacity(0.2)
+            }
               .scaledToFill()
               .overlay(
                 Button {
@@ -212,20 +275,24 @@ extension MessageCell {
 
         struct VideoPlayerView: View {
           var attachment: DiscordMedia
-          var player: AVPlayer
+          var player: AVPlayer?
 
           init(attachment: DiscordMedia) {
             self.attachment = attachment
-            self.player = AVPlayer(
-              url: URL(string: attachment.proxyurl)!
-            )
-
-            // Auto-play
-            self.player.play()
+            if let url = URL(string: attachment.proxyurl) {
+              self.player = AVPlayer(url: url)
+            } else {
+              self.player = nil
+            }
           }
 
           var body: some View {
             VideoPlayer(player: player)
+              .onAppear { player?.play() }
+              .onDisappear {
+                player?.pause()
+                player?.replaceCurrentItem(with: nil)
+              }
           }
         }
 

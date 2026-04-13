@@ -156,6 +156,9 @@
 		AADE433C2F32B91900353084 /* GroupDMsMemberList.swift in Sources */ = {isa = PBXBuildFile; fileRef = AADE433B2F32B91900353084 /* GroupDMsMemberList.swift */; };
 		AADE433E2F32B93E00353084 /* DMProfilePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AADE433D2F32B93E00353084 /* DMProfilePanel.swift */; };
 		AAEB3D952ED60816008BDD1D /* ImpactGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAEB3D942ED60812008BDD1D /* ImpactGenerator.swift */; };
+		AA7EAC722F99000000353084 /* RecentReactionsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7EAC712F99000000353084 /* RecentReactionsStore.swift */; };
+		AA7EAC742F99000100353084 /* MacSwipeSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7EAC732F99000100353084 /* MacSwipeSupport.swift */; };
+		AA7EAC762F99000200353084 /* QuickReactionPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7EAC752F99000200353084 /* QuickReactionPicker.swift */; };
 		AAEEC71F2E65120000EB5FC9 /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAEEC71E2E6511F800EB5FC9 /* TokenStore.swift */; };
 		AAEEC7222E6515C400EB5FC9 /* KeychainAccess in Frameworks */ = {isa = PBXBuildFile; productRef = AAEEC7212E6515C400EB5FC9 /* KeychainAccess */; };
 		AAEEF5012E9900F60034FA04 /* Default.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAEEF5002E9900E50034FA04 /* Default.swift */; };
@@ -295,6 +298,9 @@
 		AADE433B2F32B91900353084 /* GroupDMsMemberList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDMsMemberList.swift; sourceTree = "<group>"; };
 		AADE433D2F32B93E00353084 /* DMProfilePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DMProfilePanel.swift; sourceTree = "<group>"; };
 		AAEB3D942ED60812008BDD1D /* ImpactGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImpactGenerator.swift; sourceTree = "<group>"; };
+		AA7EAC712F99000000353084 /* RecentReactionsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentReactionsStore.swift; sourceTree = "<group>"; };
+		AA7EAC732F99000100353084 /* MacSwipeSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSwipeSupport.swift; sourceTree = "<group>"; };
+		AA7EAC752F99000200353084 /* QuickReactionPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickReactionPicker.swift; sourceTree = "<group>"; };
 		AAEEC71E2E6511F800EB5FC9 /* TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStore.swift; sourceTree = "<group>"; };
 		AAEEF5002E9900E50034FA04 /* Default.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Default.swift; sourceTree = "<group>"; };
 		AAFC9DD92EB7DAE200BB8028 /* VariableBlurView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VariableBlurView.swift; sourceTree = "<group>"; };
@@ -905,6 +911,9 @@
 			isa = PBXGroup;
 			children = (
 				AAEB3D942ED60812008BDD1D /* ImpactGenerator.swift */,
+				AA7EAC712F99000000353084 /* RecentReactionsStore.swift */,
+				AA7EAC732F99000100353084 /* MacSwipeSupport.swift */,
+				AA7EAC752F99000200353084 /* QuickReactionPicker.swift */,
 				AA2278C62EA448BD002C335F /* Profile.swift */,
 				AA9D26B22EC97714006071FE /* ViewUtils.swift */,
 				AA74E4372EBC40F40031B285 /* Modifiers */,
@@ -1216,6 +1225,9 @@
 				AAD73EB62E93E29E00470158 /* DMsView.swift in Sources */,
 				AABED59E2E7F463A005BDD63 /* ChannelStore.swift in Sources */,
 				AAEB3D952ED60816008BDD1D /* ImpactGenerator.swift in Sources */,
+				AA7EAC722F99000000353084 /* RecentReactionsStore.swift in Sources */,
+				AA7EAC742F99000100353084 /* MacSwipeSupport.swift in Sources */,
+				AA7EAC762F99000200353084 /* QuickReactionPicker.swift in Sources */,
 				AA7B0B6A2EE5D809003F0CE9 /* ChatHeaders.swift in Sources */,
 				AA5DC55A2E9482ED00D81EB5 /* MessageCell.swift in Sources */,
 				57F5AF532E7CBDD000AD5674 /* AccountPicker.swift in Sources */,

@@ -11,6 +11,12 @@ import Collections
 import Foundation
 import PaicordLib
 import SwiftUI
+import os
+
+private let scrollDebugLog = os.Logger(
+  subsystem: "com.paicord.debug",
+  category: "ScrollPagination"
+)
 
 @Observable
 class ChannelStore: DiscordDataStore {
@@ -462,16 +468,29 @@ class ChannelStore: DiscordDataStore {
 
   func tryFetchMoreMessageHistory() {
     // if theres an ongoing task to fetch history, ignore this request.
-    guard loadingMessagesTask == nil else { return }
+    guard loadingMessagesTask == nil else {
+      scrollDebugLog.notice("tryFetchMoreMessageHistory: skipped, task in flight")
+      return
+    }
     // ensure we're not already at the start of history, though the ui cant trigger this if that is the case. nonetheless ykyk
-    guard hasMoreHistory else { return }
+    guard hasMoreHistory else {
+      scrollDebugLog.notice("tryFetchMoreMessageHistory: skipped, hasMoreHistory=false")
+      return
+    }
     print("[ChannelStore] Trying to fetch more message history...")
     // fetching messages into the past, get the first message id we have and fetch before that
     let firstMessage = messages.values.first
+    scrollDebugLog.notice(
+      "tryFetchMoreMessageHistory: start channel=\(self.channelId.rawValue, privacy: .public) firstMessage=\(firstMessage?.id.rawValue ?? "nil", privacy: .public) currentCount=\(self.messages.count, privacy: .public)"
+    )
     self.loadingMessagesTask = Task { @MainActor in
       do {
         try await self.fetchMessages(before: firstMessage?.id)
+        scrollDebugLog.notice(
+          "tryFetchMoreMessageHistory: done channel=\(self.channelId.rawValue, privacy: .public) newCount=\(self.messages.count, privacy: .public) hasMoreHistory=\(self.hasMoreHistory, privacy: .public)"
+        )
       } catch {
+        scrollDebugLog.error("tryFetchMoreMessageHistory: failed error=\(error.localizedDescription, privacy: .public)")
         PaicordAppState.instances.first?.value.error = error
       }
       self.loadingMessagesTask = nil
@@ -522,6 +541,9 @@ class ChannelStore: DiscordDataStore {
     guard let gateway = gateway?.gateway else { return }
 
     let requestedLimit = limit ?? 50
+    scrollDebugLog.notice(
+      "fetchMessages: channel=\(self.channelId.rawValue, privacy: .public) around=\(around?.rawValue ?? "-", privacy: .public) before=\(before?.rawValue ?? "-", privacy: .public) after=\(after?.rawValue ?? "-", privacy: .public) limit=\(requestedLimit, privacy: .public) existing=\(self.messages.count, privacy: .public)"
+    )
     let res = try await gateway.client.listMessages(
       channelId: channelId,
       around: around,
@@ -540,6 +562,10 @@ class ChannelStore: DiscordDataStore {
 
       // fetch messages and populate storage in the right order
       if fetchingBefore {
+        let imgCount = fetched.reduce(0) { $0 + $1.attachments.count }
+        scrollDebugLog.notice(
+          "fetchMessages.prepend: batch=\(fetched.count, privacy: .public) attachments=\(imgCount, privacy: .public)"
+        )
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
@@ -551,6 +577,9 @@ class ChannelStore: DiscordDataStore {
             )
           }
         }
+        scrollDebugLog.notice(
+          "fetchMessages.prepend: done totalNow=\(self.messages.count, privacy: .public)"
+        )
 
         if fetched.count < requestedLimit {
           self.hasMoreHistory = false
