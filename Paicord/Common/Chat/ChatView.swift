@@ -182,13 +182,23 @@ struct ChatView: View {
         }
       }
 
-      if vm.hasPermission(.sendMessages) {
-        InputBar(vm: vm)
-          .id(vm.channelId)
-      } else {
-        Spacer().frame(height: 10)
-      }
+      #if os(iOS)
+        if vm.hasPermission(.sendMessages) {
+          InputBar(vm: vm)
+            .id(vm.channelId)
+        } else {
+          Spacer().frame(height: 10)
+        }
+      #endif
     }
+    #if os(macOS)
+      .safeAreaInset(edge: .bottom, spacing: 0) {
+        if vm.hasPermission(.sendMessages) {
+          InputBar(vm: vm)
+            .id(vm.channelId)
+        }
+      }
+    #endif
     .animation(
       shouldAnimate && chatAnimatesMessages ? .default : nil,
       value: orderedMessages.count
