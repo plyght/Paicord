@@ -151,6 +151,165 @@ extension ChatView.InputBar {
         return (newText, newCursor)
       }
 
+      struct SlashCandidate: Identifiable, Equatable {
+        let id: String
+        let command: ApplicationCommand
+        let applicationName: String?
+        let applicationIcon: String?
+
+        static func == (lhs: SlashCandidate, rhs: SlashCandidate) -> Bool {
+          lhs.id == rhs.id
+        }
+      }
+
+      var slashTriggerRange: NSRange = NSRange(location: NSNotFound, length: 0)
+      var slashQuery: String = ""
+      var slashResults: [SlashCandidate] = []
+      var slashSelectedIndex: Int = 0
+      var slashFetchTask: Task<Void, Never>? = nil
+
+      @ObservationIgnored
+      var acceptSlashFromUI: (() -> Void)? = nil
+      @ObservationIgnored
+      var executeSlashFromUI: ((SlashCandidate) -> Void)? = nil
+
+      var isSlashing: Bool {
+        slashTriggerRange.location != NSNotFound
+      }
+
+      func clearSlash() {
+        slashFetchTask?.cancel()
+        slashFetchTask = nil
+        slashTriggerRange = NSRange(location: NSNotFound, length: 0)
+        slashQuery = ""
+        slashResults = []
+        slashSelectedIndex = 0
+      }
+
+      func updateSlashState(from text: String, cursor: Int) {
+        let ns = text as NSString
+        guard ns.length > 0 else {
+          clearSlash()
+          return
+        }
+        var leading = 0
+        while leading < ns.length {
+          let c = ns.character(at: leading)
+          if let scalar = UnicodeScalar(c),
+            CharacterSet.whitespacesAndNewlines.contains(scalar)
+          {
+            leading += 1
+          } else {
+            break
+          }
+        }
+        guard leading < ns.length,
+          ns.character(at: leading)
+            == ("/" as NSString).character(at: 0)
+        else {
+          clearSlash()
+          return
+        }
+        let slashLocation = leading
+        let clamped = max(0, min(cursor, ns.length))
+        guard clamped > slashLocation else {
+          clearSlash()
+          return
+        }
+        let queryStart = slashLocation + 1
+        let queryLen = clamped - queryStart
+        guard queryLen >= 0 else {
+          clearSlash()
+          return
+        }
+        let query = ns.substring(
+          with: NSRange(location: queryStart, length: queryLen)
+        )
+        if query.contains("\n") {
+          clearSlash()
+          return
+        }
+        if let space = query.firstIndex(of: " "),
+          query.distance(from: query.startIndex, to: space) < query.count
+        {
+          clearSlash()
+          return
+        }
+        if query.count > 32 {
+          clearSlash()
+          return
+        }
+        slashTriggerRange = NSRange(
+          location: slashLocation,
+          length: clamped - slashLocation
+        )
+        slashQuery = query
+        fetchSlashCommands(query: query)
+      }
+
+      func moveSlashSelection(by delta: Int) {
+        guard !slashResults.isEmpty else { return }
+        let n = slashResults.count
+        slashSelectedIndex = ((slashSelectedIndex + delta) % n + n) % n
+      }
+
+      func consumeSelectedSlash() -> (SlashCandidate, NSRange)? {
+        guard slashTriggerRange.location != NSNotFound,
+          slashSelectedIndex >= 0,
+          slashSelectedIndex < slashResults.count
+        else { return nil }
+        let candidate = slashResults[slashSelectedIndex]
+        let range = slashTriggerRange
+        return (candidate, range)
+      }
+
+      private func fetchSlashCommands(query: String) {
+        slashFetchTask?.cancel()
+        let channelId = channelStore.channelId
+        let client = channelStore.gateway?.client
+        guard let client else {
+          slashResults = []
+          return
+        }
+        slashFetchTask = Task { [weak self] in
+          do {
+            let resp = try await client.searchApplicationCommands(
+              channelId: channelId,
+              type: 1,
+              query: query.isEmpty ? nil : query,
+              limit: 8,
+              includeApplications: true
+            )
+            let index = try resp.decode()
+            try Task.checkCancellation()
+            await MainActor.run {
+              guard let self else { return }
+              guard self.isSlashing, self.slashQuery == query else { return }
+              let appsById: [ApplicationSnowflake: ApplicationCommandIndex.PartialApplication] =
+                (index.applications ?? []).reduce(into: [:]) { acc, app in
+                  acc[app.id] = app
+                }
+              self.slashResults = index.application_commands.map { cmd in
+                let app = appsById[cmd.application_id]
+                return SlashCandidate(
+                  id: cmd.id.rawValue,
+                  command: cmd,
+                  applicationName: app?.name,
+                  applicationIcon: app?.icon
+                )
+              }
+              if self.slashSelectedIndex >= self.slashResults.count {
+                self.slashSelectedIndex = 0
+              }
+            }
+          } catch is CancellationError {
+            return
+          } catch {
+            print("[InputVM] slash search failed:", error)
+          }
+        }
+      }
+
       private func searchMembers(query: String) -> [MentionCandidate] {
         let members = channelStore.guildStore?.members ?? [:]
         let q = query.lowercased()
@@ -411,6 +570,7 @@ extension ChatView.InputBar {
       content = ""
       #if os(macOS)
         clearMention()
+        clearSlash()
       #endif
       isResetting = false
     }

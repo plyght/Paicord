@@ -21,6 +21,7 @@ extension ChatView {
     @Environment(\.gateway) var gw
     @Environment(\.theme) var theme
     var vm: ChannelStore
+    var canSend: Bool
     @State var inputVM: InputVM
     @ViewStorage private var isManualUpdate = false
 
@@ -34,8 +35,9 @@ extension ChatView {
       }
     }
 
-    init(vm: ChannelStore) {
+    init(vm: ChannelStore, canSend: Bool = true) {
       self.vm = vm
+      self.canSend = canSend
       self._inputVM = State(initialValue: InputBar.vm(for: vm))
     }
 
@@ -145,6 +147,12 @@ extension ChatView {
                   .offset(y: 8).combined(with: .opacity)
                 )
             }
+            if inputVM.isSlashing {
+              slashPopover
+                .transition(
+                  .offset(y: 8).combined(with: .opacity)
+                )
+            }
           #endif
 
           messageInputBar
@@ -185,10 +193,11 @@ extension ChatView {
 
     @ViewBuilder
     var messageInputBar: some View {
-      HStack(alignment: .bottom, spacing: 8) {
+      HStack(alignment: .bottom, spacing: Spacing.standard) {
         mediaPickerButton
           .disabled(
             {
+              if !canSend { return true }
               switch inputVM.messageAction {
               case .edit: return true
               default: return false
@@ -196,10 +205,14 @@ extension ChatView {
             }()
           )
 
-        textField
+        if canSend {
+          textField
+        } else {
+          noPermissionField
+        }
       }
-      .padding([.horizontal, .bottom], 8)
-      .padding(.top, 4)
+      .padding([.horizontal, .bottom], Spacing.standard)
+      .padding(.top, Spacing.compact)
       .geometryGroup()
       #if os(iOS)
         .padding(.bottom, animatedKeyboardHeight)
@@ -437,6 +450,44 @@ extension ChatView {
     }
 
     @ViewBuilder
+    var noPermissionField: some View {
+      HStack(alignment: .center, spacing: 0) {
+        Label {
+          Text("You don't have permission to send messages in this channel.")
+            .lineLimit(1)
+            .truncationMode(.tail)
+        } icon: {
+          Image(systemName: "lock.fill")
+        }
+        .labelStyle(.titleAndIcon)
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        #if os(iOS)
+          .padding(.vertical, InputField.verticalPadding)
+          .padding(.leading, InputField.horizontalPadding)
+          .padding(.trailing, Spacing.standard)
+        #else
+          .padding(.vertical, Spacing.standard)
+          .padding(.leading, Spacing.standard)
+          .padding(.trailing, Spacing.compact)
+        #endif
+
+        Image(systemName: "face.smiling")
+          .imageScale(.large)
+          .foregroundStyle(.secondary.opacity(0.5))
+          .padding(.trailing, InputField.trailingActionInset)
+          .padding(.vertical, InputField.trailingActionInset)
+      }
+      #if os(iOS)
+        .background(.background.secondary.opacity(0.8))
+        .clipShape(.rect(cornerRadius: InputField.cornerRadius))
+      #else
+        .glassEffect(.regular.interactive())
+      #endif
+      .allowsHitTesting(false)
+    }
+
+    @ViewBuilder
     var textField: some View {
       HStack(alignment: .bottom) {
         #if os(iOS)
@@ -446,8 +497,8 @@ extension ChatView {
             isFocused: $isFocused,
             onPasteFiles: handlePastedFiles
           )
-          .padding(.vertical, 7)
-          .padding(.horizontal, 12)
+          .padding(.vertical, InputField.verticalPadding)
+          .padding(.horizontal, InputField.horizontalPadding)
         #else
           TextView(
             "Message\(vm.channel?.name.map { " #\($0)" } ?? "")",
@@ -475,15 +526,15 @@ extension ChatView {
         } label: {
           Image(systemName: "face.smiling")
             .imageScale(.large)
-            .padding(.trailing, 6)
+            .padding(.trailing, InputField.trailingActionInset)
         }
         .buttonStyle(.borderless)
         .tint(.secondary)
-        .padding(.vertical, 6)
+        .padding(.vertical, InputField.trailingActionInset)
       }
       #if os(iOS)
         .background(.background.secondary.opacity(0.8))
-        .clipShape(.rect(cornerRadius: 18))
+        .clipShape(.rect(cornerRadius: InputField.cornerRadius))
       #else
         .glassEffect(.regular.interactive())
       #endif
@@ -547,6 +598,144 @@ extension ChatView {
           .spring(duration: 0.2),
           value: inputVM.mentionSelectedIndex
         )
+      }
+
+      @ViewBuilder
+      var slashPopover: some View {
+        VStack(alignment: .leading, spacing: 0) {
+          if inputVM.slashResults.isEmpty {
+            Text("No slash commands")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+              .padding(.vertical, 6)
+              .padding(.horizontal, 8)
+          } else {
+            ForEach(
+              Array(inputVM.slashResults.enumerated()),
+              id: \.element.id
+            ) { idx, candidate in
+              slashRow(
+                candidate: candidate,
+                selected: idx == inputVM.slashSelectedIndex
+              )
+              .contentShape(Rectangle())
+              .onTapGesture {
+                inputVM.slashSelectedIndex = idx
+                inputVM.acceptSlashFromUI?()
+              }
+              .onHover { hovering in
+                if hovering { inputVM.slashSelectedIndex = idx }
+              }
+            }
+          }
+        }
+        .padding(6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassEffect(.regular, in: .rect(cornerRadius: 16))
+        .padding(.horizontal, 8)
+        .animation(.spring(duration: 0.25), value: inputVM.slashResults)
+        .animation(
+          .spring(duration: 0.2),
+          value: inputVM.slashSelectedIndex
+        )
+        .onAppear { wireSlashExecutor() }
+      }
+
+      @ViewBuilder
+      func slashRow(
+        candidate: InputVM.SlashCandidate,
+        selected: Bool
+      ) -> some View {
+        HStack(spacing: 8) {
+          if let icon = candidate.applicationIcon {
+            AsyncImage(
+              url: URL(
+                string:
+                  "https://cdn.discordapp.com/app-icons/\(candidate.command.application_id.rawValue)/\(icon).png?size=32"
+              )
+            ) { image in
+              image.resizable()
+            } placeholder: {
+              RoundedRectangle(cornerRadius: 4)
+                .fill(.secondary.opacity(0.3))
+            }
+            .frame(width: 22, height: 22)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+          } else {
+            RoundedRectangle(cornerRadius: 4)
+              .fill(.secondary.opacity(0.3))
+              .frame(width: 22, height: 22)
+              .overlay(
+                Image(systemName: "slash.circle")
+                  .foregroundStyle(.secondary)
+              )
+          }
+
+          Text("/\(candidate.command.name)")
+            .fontWeight(.medium)
+            .lineLimit(1)
+          Text(candidate.command.description)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+          Spacer(minLength: 0)
+          if let app = candidate.applicationName {
+            Text(app)
+              .font(.caption)
+              .foregroundStyle(.tertiary)
+              .lineLimit(1)
+          }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(
+          RoundedRectangle()
+            .fill(selected ? Color.accentColor.opacity(0.25) : .clear)
+        )
+      }
+
+      private func wireSlashExecutor() {
+        inputVM.executeSlashFromUI = { candidate in
+          executeSlashCommand(candidate)
+        }
+      }
+
+      private func executeSlashCommand(_ candidate: InputVM.SlashCandidate) {
+        guard let channelId = appState.selectedChannel else { return }
+        let guildId = vm.guildStore?.guildId
+        let command = candidate.command
+        Task {
+          guard let manager = gw.gateway else { return }
+          guard let sessionId = await manager.sessionId else {
+            print("[InputBar] slash execute: no sessionId")
+            return
+          }
+          let nonce: MessageSnowflake = try! .makeFake(date: .now)
+          let data = SlashCommandInvocation.Data(
+            version: command.version ?? command.id.rawValue,
+            id: command.id,
+            name: command.name,
+            type: 1,
+            options: nil,
+            attachments: [],
+            application_command: command
+          )
+          let payload = SlashCommandInvocation(
+            application_id: command.application_id,
+            guild_id: guildId,
+            channel_id: channelId,
+            session_id: sessionId,
+            data: data,
+            nonce: nonce.rawValue
+          )
+          do {
+            let resp = try await manager.client.invokeSlashCommand(
+              payload: payload
+            )
+            try resp.guardSuccess()
+          } catch {
+            print("[InputBar] slash execute failed:", error)
+          }
+        }
       }
 
       @ViewBuilder

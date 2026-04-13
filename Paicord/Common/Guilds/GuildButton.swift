@@ -42,14 +42,25 @@ struct GuildButton: View {
       FolderButtons(id: folder.id.value, folder: folder, guilds: guilds)
         .padding(-2)
     } else {
+      let guildHasUnread: Bool = {
+        guard let id = guild?.id else {
+          return gw.readStates.aggregateDMHasUnread()
+        }
+        return gw.readStates.aggregateHasUnread(for: id)
+      }()
+      let guildMentionCount: Int = {
+        guard let id = guild?.id else {
+          return gw.readStates.aggregateDMMentions()
+        }
+        return gw.readStates.aggregateMentions(for: id)
+      }()
       let height: CGFloat = {
         // if the guild is selected
         if appState.selectedGuild == guild?.id {
           return 38
         } else if isHovering {
           return 20
-        } else if /* if theres unreads TODO */
-        false {
+        } else if guildHasUnread {
           return 8
         } else {
           return 0
@@ -65,6 +76,18 @@ struct GuildButton: View {
             .frame(height: height)
             //            .opacity(height == 0 ? 0 : 1)
             .offset(x: -14 + (height == 0 ? -8 : 0))
+        }
+        .overlay(alignment: .bottomTrailing) {
+          if guildMentionCount > 0 {
+            Text(guildMentionCount > 99 ? "99+" : "\(guildMentionCount)")
+              .font(.caption2)
+              .fontWeight(.bold)
+              .foregroundStyle(.white)
+              .padding(.horizontal, 5)
+              .padding(.vertical, 1)
+              .background(Color.red, in: Capsule())
+              .offset(x: 4, y: 4)
+          }
         }
         .animation(.default, value: height)
     }
@@ -103,6 +126,18 @@ struct GuildButton: View {
           forKey: "GuildFolders.\(id).isExpanded"
         )
       )
+    }
+
+    private var folderGuildIds: [GuildSnowflake] {
+      folder.guildIds.map { GuildSnowflake($0.description) }
+    }
+
+    private var folderHasUnread: Bool {
+      folderGuildIds.contains { gw.readStates.aggregateHasUnread(for: $0) }
+    }
+
+    private var folderMentionCount: Int {
+      folderGuildIds.reduce(0) { $0 + gw.readStates.aggregateMentions(for: $1) }
     }
 
     var body: some View {
@@ -170,6 +205,26 @@ struct GuildButton: View {
           }
         }
         .buttonStyle(.borderless)
+        .overlay(alignment: .leading) {
+          if !isExpanded && folderHasUnread {
+            Capsule()
+              .fill(.primary)
+              .frame(width: 8, height: 8)
+              .offset(x: -14)
+          }
+        }
+        .overlay(alignment: .bottomTrailing) {
+          if !isExpanded && folderMentionCount > 0 {
+            Text(folderMentionCount > 99 ? "99+" : "\(folderMentionCount)")
+              .font(.caption2)
+              .fontWeight(.bold)
+              .foregroundStyle(.white)
+              .padding(.horizontal, 5)
+              .padding(.vertical, 1)
+              .background(Color.red, in: Capsule())
+              .offset(x: 4, y: 4)
+          }
+        }
 
         if isExpanded {
           let guilds: [Guild] = folder.guildIds.compactMap { guildID in

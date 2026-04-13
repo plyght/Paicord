@@ -83,6 +83,7 @@ import SwiftUIX
           textView.onSubmit = onSubmit
           textView.onPasteFiles = onPasteFiles
           textView.mentionVM = inputVM
+          textView.slashVM = inputVM
           context.coordinator.vm = inputVM
           context.coordinator.textView = textView
           if let vm = inputVM {
@@ -123,6 +124,57 @@ import SwiftUIX
             }
             textView.onMentionMove = { [weak vm] delta in
               vm?.moveMentionSelection(by: delta)
+            }
+
+            let slashAccept: () -> Void = { [weak textView] in
+              guard let tv = textView, let ts = tv.textStorage else { return }
+              guard let (candidate, range) = vm.consumeSelectedSlash()
+              else { return }
+              let hasOptions = !(candidate.command.options ?? []).isEmpty
+              if !hasOptions {
+                vm.executeSlashFromUI?(candidate)
+                ts.beginEditing()
+                ts.replaceCharacters(
+                  in: range,
+                  with: NSAttributedString(
+                    string: "",
+                    attributes: _TextView.defaultTypingAttributes()
+                  )
+                )
+                ts.endEditing()
+                tv.setSelectedRange(NSRange(location: range.location, length: 0))
+                tv.typingAttributes = _TextView.defaultTypingAttributes()
+                vm.clearSlash()
+                context.coordinator.parent.text = _TextView.serialize(
+                  tv.attributedString()
+                )
+              } else {
+                let skeleton = "/\(candidate.command.name) "
+                let attributed = NSAttributedString(
+                  string: skeleton,
+                  attributes: _TextView.defaultTypingAttributes()
+                )
+                ts.beginEditing()
+                ts.replaceCharacters(in: range, with: attributed)
+                ts.endEditing()
+                let newCursor = range.location + attributed.length
+                tv.setSelectedRange(
+                  NSRange(location: newCursor, length: 0)
+                )
+                tv.typingAttributes = _TextView.defaultTypingAttributes()
+                vm.clearSlash()
+                context.coordinator.parent.text = _TextView.serialize(
+                  tv.attributedString()
+                )
+              }
+            }
+            vm.acceptSlashFromUI = slashAccept
+            textView.onAcceptSlash = slashAccept
+            textView.onCancelSlash = { [weak vm] in
+              vm?.clearSlash()
+            }
+            textView.onSlashMove = { [weak vm] delta in
+              vm?.moveSlashSelection(by: delta)
             }
           }
           textView.minSize = .zero
@@ -181,6 +233,7 @@ import SwiftUIX
           }
           if let subTV = textView as? SubmissiveTextView {
             subTV.mentionVM = inputVM
+            subTV.slashVM = inputVM
           }
           context.coordinator.vm = inputVM
         }
@@ -216,20 +269,23 @@ import SwiftUIX
         static func serialize(_ attributed: NSAttributedString) -> String {
           var out = ""
           let ns = attributed.string as NSString
+          let fullRange = NSRange(location: 0, length: ns.length)
           var i = 0
           while i < ns.length {
             var effective = NSRange(location: 0, length: 0)
             let mentionID = attributed.attribute(
               mentionAttributeKey,
               at: i,
-              effectiveRange: &effective
+              longestEffectiveRange: &effective,
+              in: fullRange
             ) as? String
             if let id = mentionID {
               out.append("<@\(id)>")
               i = effective.location + effective.length
             } else {
-              out.append(ns.substring(with: NSRange(location: i, length: 1)))
-              i += 1
+              let charRange = ns.rangeOfComposedCharacterSequence(at: i)
+              out.append(ns.substring(with: charRange))
+              i = charRange.location + charRange.length
             }
           }
           return out
@@ -254,6 +310,7 @@ import SwiftUIX
             }
             parent.text = _TextView.serialize(textView.attributedString())
             processMentionState(textView: textView)
+            processSlashState(textView: textView)
           }
 
           func textViewDidChangeSelection(_ notification: Notification) {
@@ -265,6 +322,13 @@ import SwiftUIX
               textView.typingAttributes = _TextView.defaultTypingAttributes()
             }
             processMentionState(textView: textView)
+            processSlashState(textView: textView)
+          }
+
+          private func processSlashState(textView: NSTextView) {
+            guard let vm else { return }
+            let loc = textView.selectedRange().location
+            vm.updateSlashState(from: textView.string, cursor: loc)
           }
 
           private func processMentionState(textView: NSTextView) {
@@ -304,6 +368,10 @@ import SwiftUIX
           var onAcceptMention: (() -> Void)?
           var onCancelMention: (() -> Void)?
           var onMentionMove: ((Int) -> Void)?
+          weak var slashVM: InputVM?
+          var onAcceptSlash: (() -> Void)?
+          var onCancelSlash: (() -> Void)?
+          var onSlashMove: ((Int) -> Void)?
           weak var undoManagerRef: UndoManager?
 
           init(
@@ -445,6 +513,23 @@ import SwiftUIX
                 return
               case 53:  // escape
                 onCancelMention?()
+                return
+              default: break
+              }
+            }
+            if let vm = slashVM, vm.isSlashing, !vm.slashResults.isEmpty {
+              switch event.keyCode {
+              case 125:  // down arrow
+                onSlashMove?(1)
+                return
+              case 126:  // up arrow
+                onSlashMove?(-1)
+                return
+              case 36, 48:  // return, tab
+                onAcceptSlash?()
+                return
+              case 53:  // escape
+                onCancelSlash?()
                 return
               default: break
               }

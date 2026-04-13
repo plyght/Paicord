@@ -18,7 +18,7 @@ struct SidebarView: View {
   var body: some View {
     HStack(spacing: 0) {
       guildScroller
-        .frame(width: 65)
+        .frame(width: Sidebar.guildColumnWidth)
       if let guild = currentGuildStore {
         GuildView(guild: guild)
       } else {

@@ -18,6 +18,7 @@
 		57A4E7152E6B44C900470131 /* CGSize.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57A4E7142E6B44C200470131 /* CGSize.swift */; };
 		57A55C572E7560CF005C8226 /* MarkdownText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57A55C562E7560CC005C8226 /* MarkdownText.swift */; };
 		57AA8A032E7875D100B4CA9C /* Sidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57AA8A022E7875CD00B4CA9C /* Sidebar.swift */; };
+		57AB0A022E900A0200AB0001 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57AB0A012E900A0100AB0001 /* AboutView.swift */; };
 		57CDD87F2E71CB6000022203 /* HCaptcha in Frameworks */ = {isa = PBXBuildFile; productRef = 57CDD87E2E71CB6000022203 /* HCaptcha */; };
 		57CDD8812E71FF7600022203 /* CaptchaSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57CDD8802E71FF7600022203 /* CaptchaSheet.swift */; };
 		57DA042A2E79894500DB4C7C /* ConnectionStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57DA04292E79894500DB4C7C /* ConnectionStateView.swift */; };
@@ -135,6 +136,10 @@
 		AAB905342E8334AC00EA171B /* SlideoverDoubleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAB905332E8334AC00EA171B /* SlideoverDoubleView.swift */; };
 		AAB905362E8451B000EA171B /* ProfileBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAB905352E8451AC00EA171B /* ProfileBar.swift */; };
 		AAB905382E845A7300EA171B /* ChannelButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAB905372E845A7000EA171B /* ChannelButton.swift */; };
+		BBAA000000000000000000A1 /* UnreadBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAA000000000000000000B1 /* UnreadBadge.swift */; };
+		BBAA000000000000000000A2 /* MarkAllReadButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAA000000000000000000B2 /* MarkAllReadButton.swift */; };
+		BBAA000000000000000000A3 /* NewMessagesDivider.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAA000000000000000000B3 /* NewMessagesDivider.swift */; };
+		BBAA000000000000000000A4 /* ForumTagPills.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAA000000000000000000B4 /* ForumTagPills.swift */; };
 		AABED59E2E7F463A005BDD63 /* ChannelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABED59D2E7F4637005BDD63 /* ChannelStore.swift */; };
 		AABED5A02E7F48FD005BDD63 /* CurrentUserStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABED59F2E7F48F9005BDD63 /* CurrentUserStore.swift */; };
 		AABED5A22E7F4950005BDD63 /* DiscordDataStoreProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABED5A12E7F494A005BDD63 /* DiscordDataStoreProtocol.swift */; };
@@ -174,6 +179,7 @@
 		57A4E7142E6B44C200470131 /* CGSize.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CGSize.swift; sourceTree = "<group>"; };
 		57A55C562E7560CC005C8226 /* MarkdownText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownText.swift; sourceTree = "<group>"; };
 		57AA8A022E7875CD00B4CA9C /* Sidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sidebar.swift; sourceTree = "<group>"; };
+		57AB0A012E900A0100AB0001 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		57CDD8802E71FF7600022203 /* CaptchaSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptchaSheet.swift; sourceTree = "<group>"; };
 		57DA04292E79894500DB4C7C /* ConnectionStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionStateView.swift; sourceTree = "<group>"; };
 		57DA042B2E79B25F00DB4C7C /* AsyncButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncButton.swift; sourceTree = "<group>"; };
@@ -278,6 +284,10 @@
 		AAB905332E8334AC00EA171B /* SlideoverDoubleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlideoverDoubleView.swift; sourceTree = "<group>"; };
 		AAB905352E8451AC00EA171B /* ProfileBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileBar.swift; sourceTree = "<group>"; };
 		AAB905372E845A7000EA171B /* ChannelButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelButton.swift; sourceTree = "<group>"; };
+		BBAA000000000000000000B1 /* UnreadBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnreadBadge.swift; sourceTree = "<group>"; };
+		BBAA000000000000000000B2 /* MarkAllReadButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkAllReadButton.swift; sourceTree = "<group>"; };
+		BBAA000000000000000000B3 /* NewMessagesDivider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewMessagesDivider.swift; sourceTree = "<group>"; };
+		BBAA000000000000000000B4 /* ForumTagPills.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForumTagPills.swift; sourceTree = "<group>"; };
 		AABED59D2E7F4637005BDD63 /* ChannelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelStore.swift; sourceTree = "<group>"; };
 		AABED59F2E7F48F9005BDD63 /* CurrentUserStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrentUserStore.swift; sourceTree = "<group>"; };
 		AABED5A12E7F494A005BDD63 /* DiscordDataStoreProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscordDataStoreProtocol.swift; sourceTree = "<group>"; };
@@ -344,6 +354,7 @@
 			isa = PBXGroup;
 			children = (
 				57AA8A012E7875A300B4CA9C /* Sidebar */,
+				57AB0A012E900A0100AB0001 /* AboutView.swift */,
 			);
 			path = macOS;
 			sourceTree = "<group>";
@@ -416,6 +427,8 @@
 				AAD73EB52E93E29E00470158 /* DMsView.swift */,
 				AA1878F22E81A305009C7E40 /* GuildView.swift */,
 				AA9C81822E6660BE0086B1DA /* GuildButton.swift */,
+				BBAA000000000000000000B1 /* UnreadBadge.swift */,
+				BBAA000000000000000000B2 /* MarkAllReadButton.swift */,
 			);
 			path = Guilds;
 			sourceTree = "<group>";
@@ -556,6 +569,8 @@
 				AA13A1E22EA83766005A3613 /* TypingIndicatorBar.swift */,
 				AA36D5A52EB60F23006612F8 /* Input */,
 				AA5DC5582E9482E800D81EB5 /* Messages */,
+				BBAA000000000000000000B3 /* NewMessagesDivider.swift */,
+				BBAA000000000000000000B4 /* ForumTagPills.swift */,
 			);
 			path = Chat;
 			sourceTree = "<group>";
@@ -1160,6 +1175,10 @@
 				57F5AF492E7CB13100AD5674 /* PaicordAppState.swift in Sources */,
 				AADE433C2F32B91900353084 /* GroupDMsMemberList.swift in Sources */,
 				AAB905382E845A7300EA171B /* ChannelButton.swift in Sources */,
+				BBAA000000000000000000A1 /* UnreadBadge.swift in Sources */,
+				BBAA000000000000000000A2 /* MarkAllReadButton.swift in Sources */,
+				BBAA000000000000000000A3 /* NewMessagesDivider.swift in Sources */,
+				BBAA000000000000000000A4 /* ForumTagPills.swift in Sources */,
 				5724CD6F2E733D0E00931FEF /* MFASheet.swift in Sources */,
 				AA47AF1B2EDEEFF9008A50C9 /* DataPrivacySection.swift in Sources */,
 				AA078FC72EC80D3C00EDFFA8 /* LocalConsoleManager.swift in Sources */,
@@ -1237,6 +1256,7 @@
 				57F5AF4B2E7CB13F00AD5674 /* Commands.swift in Sources */,
 				AADD7F8D2E99EB0B0025B644 /* Attachments.swift in Sources */,
 				57AA8A032E7875D100B4CA9C /* Sidebar.swift in Sources */,
+				57AB0A022E900A0200AB0001 /* AboutView.swift in Sources */,
 				AA0C43D72E9F190B000FA834 /* AttributedText.swift in Sources */,
 				AAD446A42ED0B631006CB07C /* ShellView.swift in Sources */,
 				AA47AF342EDEF1DC008A50C9 /* LanguageSection.swift in Sources */,

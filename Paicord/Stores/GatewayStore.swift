@@ -172,6 +172,13 @@ final class GatewayStore {
 
   private var subscribedGuilds: Set<GuildSnowflake> = []
   private var guilds: [GuildSnowflake: GuildStore] = [:]
+
+  /// Read-only peek into the guild store map for stores that need to look up
+  /// member roles without triggering the subscription side-effects of `getGuildStore`.
+  func peekGuildStore(for id: GuildSnowflake) -> GuildStore? {
+    guilds[id]
+  }
+
   func getGuildStore(for id: GuildSnowflake) -> GuildStore {
     defer {
       if !subscribedGuilds.contains(id) {

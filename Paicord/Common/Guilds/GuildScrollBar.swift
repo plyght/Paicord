@@ -47,6 +47,8 @@ struct GuildScrollBar: View {
         Divider()
           .padding(.horizontal, 8)
 
+        MarkAllReadButton()
+
         ForEach(unlistedGuilds, id: \.id) { guild in
           GuildButton(guild: guild)
         }
@@ -74,7 +76,16 @@ struct GuildScrollBar: View {
           }
         }
       }
-      .safeAreaPadding(.all, 10)
+      .safeAreaPadding(.horizontal, Sidebar.guildScrollerInset)
+      .safeAreaPadding(.bottom, Sidebar.guildScrollerInset)
+      .safeAreaPadding(
+        .top,
+        max(
+          0,
+          (Sidebar.headerHeight
+            - (Sidebar.guildColumnWidth - Sidebar.guildScrollerInset * 2)) / 2
+        )
+      )
     }
   }
 }

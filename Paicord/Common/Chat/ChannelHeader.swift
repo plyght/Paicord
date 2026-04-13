@@ -99,6 +99,12 @@ extension ChatView {
           Text(name)
             .font(idiom == .phone ? .headline : .title3)
             .fontWeight(.semibold)
+          if let tags = vm.channel?.available_tags, !tags.isEmpty {
+            ForumTagPills(
+              availableTags: tags,
+              appliedTagIds: vm.channel?.applied_tags
+            )
+          }
         }
         .padding(.trailing, 6)
       }

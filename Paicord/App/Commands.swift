@@ -14,6 +14,14 @@ struct PaicordCommands: Commands {
   @FocusedValue(\.appState) var appState
 
   var body: some Commands {
+    #if os(macOS)
+    CommandGroup(replacing: .appInfo) {
+      Button("About Paicord") {
+        openWindow(id: "about")
+      }
+    }
+    #endif
+
     CommandGroup(replacing: .appSettings) {
       Button("Settings") {
         openWindow(id: "settings")

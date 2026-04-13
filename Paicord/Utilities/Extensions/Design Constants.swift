@@ -37,3 +37,25 @@ public enum Radius {
   public static let medium: CGFloat = 12
   public static let large: CGFloat = 16
 }
+
+public enum Sidebar {
+  public static let guildColumnWidth: CGFloat = 65
+  public static let guildScrollerInset: CGFloat = 10
+  public static let headerHeight: CGFloat = 65
+}
+
+public enum InputField {
+  public static let cornerRadius: CGFloat = 18
+  public static let verticalPadding: CGFloat = 7
+  public static let horizontalPadding: CGFloat = 12
+  public static let trailingActionInset: CGFloat = 6
+}
+
+public enum MarkAllRead {
+  public static let fontSize: CGFloat = 9
+  public static let horizontalPadding: CGFloat = Spacing.standard
+  public static let verticalPadding: CGFloat = Spacing.compact
+  public static let outerVerticalPadding: CGFloat = Spacing.compact
+  public static let activeForeground: Color = .primary
+  public static let inactiveForeground: Color = Color.secondary.opacity(0.5)
+}

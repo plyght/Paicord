@@ -99,7 +99,7 @@ public actor UserGatewayManager: GatewayManager {
   /// The sequence number for the payloads sent to us.
   var sequenceNumber: Int? = nil
   /// The ID of the current Discord-related session.
-  var sessionId: String? = nil
+  public internal(set) var sessionId: String? = nil
   /// Gateway URL for resuming the connection, so we don't need to make an api call.
   var resumeGatewayURL: String? = nil
 

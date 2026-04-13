@@ -24,27 +24,46 @@ struct DMsView: View {
   @Environment(\.theme) var theme
   var body: some View {
     ScrollFadeMask {
-      if idiom == .phone {
+      #if os(macOS)
         VStack(spacing: 0) {
-          VStack(alignment: .leading) {
+          HStack(alignment: .center, spacing: Spacing.standard) {
             Text("Direct Messages")
               .font(.title3)
               .bold()
+              .foregroundStyle(.primary)
+              .lineLimit(1)
+              .truncationMode(.tail)
               .frame(maxWidth: .infinity, alignment: .leading)
           }
-          .padding()
+          .padding(.horizontal, Spacing.large)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .frame(height: Sidebar.headerHeight)
 
           Divider()
         }
-      }
+      #else
+        if idiom == .phone {
+          VStack(spacing: 0) {
+            VStack(alignment: .leading) {
+              Text("Direct Messages")
+                .font(.title3)
+                .bold()
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding()
+
+            Divider()
+          }
+        }
+      #endif
 
       let channels = gw.user.privateChannels.values
-      LazyVStack(spacing: 4) {
+      LazyVStack(spacing: Spacing.compact) {
         ForEach(channels) { channel in
           ChannelButton(channels: [:], channel: channel)
         }
       }
-      .padding(.vertical, 4)
+      .padding(.vertical, Spacing.compact)
     }
     .frame(maxWidth: .infinity)
     #if os(macOS)

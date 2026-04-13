@@ -16,6 +16,17 @@ struct ChannelButton: View {
   var channels: [ChannelSnowflake: DiscordChannel]
   var channel: DiscordChannel
 
+  private var unreadBadge: some View {
+    UnreadBadge(
+      hasUnread: gw.readStates.hasUnread(for: channel.id),
+      mentionCount: gw.readStates.unreadCount(for: channel.id)
+    )
+  }
+
+  private var nameWeight: Font.Weight {
+    gw.readStates.hasUnread(for: channel.id) ? .semibold : .regular
+  }
+
   var body: some View {
     // switch channel type
     switch channel.type {
@@ -37,6 +48,9 @@ struct ChannelButton: View {
               $0.global_name ?? $0.username
             }).joined(separator: ", ") ?? "Unknown Channel"
           )
+          .fontWeight(nameWeight)
+          Spacer(minLength: 4)
+          unreadBadge
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 38)
@@ -114,6 +128,9 @@ struct ChannelButton: View {
               $0.global_name ?? $0.username
             }).joined(separator: ", ") ?? "Unknown Group DM"
           )
+          .fontWeight(nameWeight)
+          Spacer(minLength: 4)
+          unreadBadge
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 38)
@@ -131,6 +148,9 @@ struct ChannelButton: View {
           Image(systemName: "number")
             .imageScale(.medium)
           Text(channel.name ?? "unknown")
+            .fontWeight(nameWeight)
+          Spacer(minLength: 4)
+          unreadBadge
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .minHeight(35)
@@ -143,6 +163,9 @@ struct ChannelButton: View {
           Image(systemName: "megaphone.fill")
             .imageScale(.medium)
           Text(channel.name ?? "unknown")
+            .fontWeight(nameWeight)
+          Spacer(minLength: 4)
+          unreadBadge
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .minHeight(35)

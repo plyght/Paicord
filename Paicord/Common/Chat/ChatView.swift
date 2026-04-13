@@ -21,6 +21,9 @@ struct ChatView: View {
 
   @State private var isNearBottom: Bool = true
   @State private var scrollProxy: ScrollViewProxy? = nil
+  /// Snapshot of `last_acked_id` taken when this channel was first opened,
+  /// so a new-message divider stays put while the user is reading.
+  @State private var dividerAfterMessageId: MessageSnowflake? = nil
   private static let bottomSentinelId: String = "__paicord_bottom_sentinel__"
 
   var drain: MessageDrainStore { gw.messageDrain }
@@ -85,6 +88,13 @@ struct ChatView: View {
 
           ForEach(pairs, id: \.0.id) { msg, prior in
             if msg.author?.id == nil || !blocked.contains(msg.author!.id) {
+              if let dividerAfterMessageId,
+                let prior,
+                prior.id.rawValue == dividerAfterMessageId.rawValue,
+                msg.id.rawValue > dividerAfterMessageId.rawValue
+              {
+                NewMessagesDivider()
+              }
               MessageCell(
                 for: msg,
                 prior: prior,
@@ -133,7 +143,19 @@ struct ChatView: View {
         }
         .scrollTargetLayout()
       }
-      .onAppear { self.scrollProxy = proxy }
+      .onAppear {
+        self.scrollProxy = proxy
+        let acked = gw.readStates.readStates[
+          AnySnowflake(vm.channelId.rawValue)
+        ]?.last_acked_id
+        if let acked {
+          self.dividerAfterMessageId = MessageSnowflake(acked.rawValue)
+        }
+        gw.readStates.setFocused(vm.channelId, focused: true)
+      }
+      .onDisappear {
+        gw.readStates.setFocused(vm.channelId, focused: false)
+      }
       .id(vm.channelId)
       #if os(macOS)
         // esc to scroll to bottom of chat, its a little jank
@@ -185,20 +207,14 @@ struct ChatView: View {
       }  // ScrollViewReader
 
       #if os(iOS)
-        if vm.hasPermission(.sendMessages) {
-          InputBar(vm: vm)
-            .id(vm.channelId)
-        } else {
-          Spacer().frame(height: 10)
-        }
+        InputBar(vm: vm, canSend: vm.hasPermission(.sendMessages))
+          .id(vm.channelId)
       #endif
     }
     #if os(macOS)
       .safeAreaInset(edge: .bottom, spacing: 0) {
-        if vm.hasPermission(.sendMessages) {
-          InputBar(vm: vm)
-            .id(vm.channelId)
-        }
+        InputBar(vm: vm, canSend: vm.hasPermission(.sendMessages))
+          .id(vm.channelId)
       }
     #endif
     .animation(
@@ -231,6 +247,7 @@ struct ChatView: View {
       tx.disablesAnimations = true
       withTransaction(tx) {
         self.scrollProxy?.scrollTo(Self.bottomSentinelId, anchor: .bottom)
+        self.isNearBottom = true
       }
     }  // handle scroll to bottom event
     .onReceive(
@@ -286,7 +303,10 @@ private struct ChatScrollNearBottomTracker: ViewModifier {
       } action: { _, distanceFromBottom in
         let threshold: CGFloat = isNearBottom ? 200 : 120
         let newValue = distanceFromBottom < threshold
-        if isNearBottom != newValue { isNearBottom = newValue }
+        guard isNearBottom != newValue else { return }
+        Task { @MainActor in
+          if isNearBottom != newValue { isNearBottom = newValue }
+        }
       }
     } else {
       content

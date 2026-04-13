@@ -133,9 +133,9 @@ private struct GuildHeader: View {
             .font(.footnote.weight(.bold))
             .foregroundStyle(.secondary)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, Spacing.large)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: Sidebar.headerHeight)
         .contentShape(.rect)
       }
       #if os(macOS)

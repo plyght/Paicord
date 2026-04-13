@@ -11,6 +11,7 @@ import Logging
 import PaicordLib
 @_spi(Advanced) import SwiftUIIntrospect
 import SwiftUIX
+import UserNotifications
 
 #if canImport(Sparkle) && !DEBUG
   import Sparkle
@@ -67,6 +68,10 @@ struct PaicordApp: App {
       EmojiAttachmentViewProvider.self,
       forFileType: "public.item"
     )
+
+    UNUserNotificationCenter.current().requestAuthorization(
+      options: [.alert, .sound, .badge]
+    ) { _, _ in }
   }
 
   #if canImport(Sparkle) && !DEBUG
@@ -111,6 +116,22 @@ struct PaicordApp: App {
           }
       }
       .windowStyle(.automatic)
+
+      Window("About Paicord", id: "about") {
+        AboutView()
+          .introspect(.window, on: .macOS(.v14...)) { window in
+            window.titlebarAppearsTransparent = true
+            window.styleMask.insert(.fullSizeContentView)
+            window.isMovableByWindowBackground = true
+            window.titleVisibility = .hidden
+            window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+            window.standardWindowButton(.zoomButton)?.isHidden = true
+            window.isRestorable = false
+          }
+      }
+      .windowStyle(.hiddenTitleBar)
+      .windowResizability(.contentSize)
+      .defaultPosition(.center)
     #endif
   }
 }

@@ -189,12 +189,14 @@ struct MessageCell: View {
         reactWithDefaultEmoji()
       }
     )
+    #if os(iOS)
     .highPriorityGesture(
-      LongPressGesture(minimumDuration: 0.35).onEnded { _ in
+      LongPressGesture(minimumDuration: 0.35, maximumDistance: 2).onEnded { _ in
         ImpactGenerator.impact(style: .medium)
         showQuickReactions = true
       }
     )
+    #endif
     .popover(isPresented: $showQuickReactions, arrowEdge: .top) {
       QuickReactionPicker(applied: appliedUnicodeEmojis) { emoji in
         showQuickReactions = false

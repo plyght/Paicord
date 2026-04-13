@@ -57,6 +57,10 @@ public enum UserAPIEndpoint: Endpoint {
 
   // MARK: - Integrations
 
+  // MARK: - Interactions
+  case createInteraction
+  case searchApplicationCommands(channelId: ChannelSnowflake)
+
   // MARK: - Invites
   case acceptInvite(code: String)
   case getUserInvites
@@ -191,6 +195,12 @@ public enum UserAPIEndpoint: Endpoint {
     // MARK: - Emojis
     case .getGuildTopEmojis(let guildId):
       suffix = "guilds/\(guildId.rawValue)/top-emojis"
+
+    // MARK: - Interactions
+    case .createInteraction:
+      suffix = "interactions"
+    case .searchApplicationCommands(let channelId):
+      suffix = "channels/\(channelId.rawValue)/application-commands/search"
 
     // MARK: - Invites
     case .acceptInvite(let code):
@@ -346,6 +356,10 @@ public enum UserAPIEndpoint: Endpoint {
       suffix = "guilds/\(guildId.rawValue)/auto-moderation/alert-action"
     case .getGuildTopEmojis(let guildId):
       suffix = "/guilds/\(guildId.rawValue)/top-emojis"
+    case .createInteraction:
+      suffix = "interactions"
+    case .searchApplicationCommands(let channelId):
+      suffix = "channels/\(channelId.rawValue)/application-commands/search"
     case .acceptInvite(let code):
       suffix = "invites/\(code)"
     case .getUserInvites,
@@ -463,6 +477,8 @@ public enum UserAPIEndpoint: Endpoint {
     case .validateAutoModRule: return .POST
     case .executeAutoModAlertAction: return .POST
     case .getGuildTopEmojis: return .GET
+    case .createInteraction: return .POST
+    case .searchApplicationCommands: return .GET
     case .acceptInvite: return .POST
     case .getUserInvites: return .GET
     case .createUserInvite: return .POST
@@ -522,6 +538,8 @@ public enum UserAPIEndpoint: Endpoint {
     case .validateAutoModRule: return true
     case .executeAutoModAlertAction: return true
     case .getGuildTopEmojis: return true
+    case .createInteraction: return false
+    case .searchApplicationCommands: return true
     case .acceptInvite: return true
     case .getUserInvites: return true
     case .createUserInvite: return true
@@ -581,6 +599,8 @@ public enum UserAPIEndpoint: Endpoint {
     case .validateAutoModRule: return true
     case .executeAutoModAlertAction: return true
     case .getGuildTopEmojis: return true
+    case .createInteraction: return true
+    case .searchApplicationCommands: return true
     case .acceptInvite: return true
     case .getUserInvites: return true
     case .createUserInvite: return true
@@ -641,6 +661,8 @@ public enum UserAPIEndpoint: Endpoint {
     case .validateAutoModRule(let guildId): return [guildId.rawValue]
     case .executeAutoModAlertAction(let guildId): return [guildId.rawValue]
     case .getGuildTopEmojis(let guildId): return [guildId.rawValue]
+    case .createInteraction: return []
+    case .searchApplicationCommands(let channelId): return [channelId.rawValue]
     case .acceptInvite(let code): return [code]
     case .getUserInvites: return []
     case .createUserInvite: return []
@@ -725,6 +747,8 @@ public enum UserAPIEndpoint: Endpoint {
     case .executeAutoModAlertAction: return 16
     // ... space for ignored endpoints i didn't implement
     case .getGuildTopEmojis: return 41
+    case .createInteraction: return 130
+    case .searchApplicationCommands: return 131
     case .acceptInvite: return 51
     case .getUserInvites: return 52
     case .createUserInvite: return 53
@@ -798,6 +822,10 @@ public enum UserAPIEndpoint: Endpoint {
       return "executeAutoModAlertAction(guildId: \(guildId.rawValue), ..."
     case .getGuildTopEmojis(let guildId):
       return "getGuildTopEmojis(guildId: \(guildId.rawValue))"
+    case .createInteraction:
+      return "createInteraction"
+    case .searchApplicationCommands(let channelId):
+      return "searchApplicationCommands(channelId: \(channelId.rawValue))"
     case .acceptInvite(let code):
       return "acceptInvite(code: \(code))"
     case .getUserInvites: return "getUserInvites"
