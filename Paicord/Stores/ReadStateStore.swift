@@ -443,8 +443,17 @@ class ReadStateStore: DiscordDataStore {
       let authorName =
         message.author?.global_name ?? message.author?.username ?? "Someone"
       content.title = authorName
+      let users = gateway?.user.users ?? [:]
+      let guildStore: GuildStore? = {
+        guard let gid = message.guild_id else { return nil }
+        return gateway?.peekGuildStore(for: gid)
+      }()
+      let resolvedBody = message.content.resolvingDiscordMentions(
+        users: users,
+        guildStore: guildStore
+      )
       content.body =
-        message.content.isEmpty ? "(attachment)" : message.content
+        resolvedBody.isEmpty ? "(attachment)" : resolvedBody
       content.sound = .default
       content.userInfo = [
         "channel_id": message.channel_id.rawValue,

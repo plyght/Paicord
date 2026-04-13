@@ -26,6 +26,7 @@
 		57DA042F2E79DC4C00DB4C7C /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57DA042E2E79DC4900DB4C7C /* SettingsView.swift */; };
 		57E05C592E6C6AE400B81AA7 /* Design Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E05C582E6C6ADF00B81AA7 /* Design Constants.swift */; };
 		57E05C5B2E6C745900B81AA7 /* String+LocalizedError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E05C5A2E6C745300B81AA7 /* String+LocalizedError.swift */; };
+		57D1A5C12E6C745900B81AA7 /* String+DiscordMentions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57D1A5C02E6C745300B81AA7 /* String+DiscordMentions.swift */; };
 		57E05C5D2E6CBCDC00B81AA7 /* GatewayStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E05C5C2E6CBCD700B81AA7 /* GatewayStore.swift */; };
 		57F5AF472E7CAD2500AD5674 /* Challenges.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57F5AF462E7CAD2500AD5674 /* Challenges.swift */; };
 		57F5AF492E7CB13100AD5674 /* PaicordAppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57F5AF482E7CB13100AD5674 /* PaicordAppState.swift */; };
@@ -186,6 +187,7 @@
 		57DA042E2E79DC4900DB4C7C /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		57E05C582E6C6ADF00B81AA7 /* Design Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Design Constants.swift"; sourceTree = "<group>"; };
 		57E05C5A2E6C745300B81AA7 /* String+LocalizedError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+LocalizedError.swift"; sourceTree = "<group>"; };
+		57D1A5C02E6C745300B81AA7 /* String+DiscordMentions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+DiscordMentions.swift"; sourceTree = "<group>"; };
 		57E05C5C2E6CBCD700B81AA7 /* GatewayStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayStore.swift; sourceTree = "<group>"; };
 		57F5AF462E7CAD2500AD5674 /* Challenges.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Challenges.swift; sourceTree = "<group>"; };
 		57F5AF482E7CB13100AD5674 /* PaicordAppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaicordAppState.swift; sourceTree = "<group>"; };
@@ -400,6 +402,7 @@
 				AA1378042E96798000100969 /* ProcessInfo+previews.swift */,
 				AAFD41372E92FA42002BC9BE /* Array+safe.swift */,
 				57E05C5A2E6C745300B81AA7 /* String+LocalizedError.swift */,
+				57D1A5C02E6C745300B81AA7 /* String+DiscordMentions.swift */,
 				AA21D27F2EAA220300C75093 /* MaskEdgesModifier.swift */,
 				57E05C582E6C6ADF00B81AA7 /* Design Constants.swift */,
 				57A4E7142E6B44C200470131 /* CGSize.swift */,
@@ -1155,6 +1158,7 @@
 				AA79479E2EDC7B9C00B7A1EE /* PresenceStore.swift in Sources */,
 				AAB905362E8451B000EA171B /* ProfileBar.swift in Sources */,
 				57E05C5B2E6C745900B81AA7 /* String+LocalizedError.swift in Sources */,
+				57D1A5C12E6C745900B81AA7 /* String+DiscordMentions.swift in Sources */,
 				AABED5A42E7F4DAE005BDD63 /* GuildStore.swift in Sources */,
 				AAB905322E83047D00EA171B /* Extensions.swift in Sources */,
 				AAB50A522E9AC9CB0048E8B0 /* ChannelHeader.swift in Sources */,

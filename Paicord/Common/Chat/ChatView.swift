@@ -402,4 +402,8 @@ extension Notification.Name {
   static let chatViewShouldScrollToID = Notification.Name(
     "chatViewShouldScrollToID"
   )
+
+  static let inputBarShouldFocus = Notification.Name(
+    "inputBarShouldFocus"
+  )
 }

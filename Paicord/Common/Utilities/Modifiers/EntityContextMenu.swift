@@ -70,7 +70,12 @@ struct EntityContextMenu<Entity>: ViewModifier {
         )
       ) {
         ForEach(quickEmojis, id: \.self) { emoji in
-          Text(emoji).tag(emoji)
+          #if os(macOS)
+            Image(nsImage: emoji.paicordEmojiImage())
+              .tag(emoji)
+          #else
+            Text(emoji).tag(emoji)
+          #endif
         }
       }
       .pickerStyle(.palette)
@@ -441,3 +446,27 @@ struct EntityContextMenu<Entity>: ViewModifier {
     #endif
   }
 }
+
+#if os(macOS)
+  extension String {
+    func paicordEmojiImage(pointSize: CGFloat = 18) -> NSImage {
+      let font = NSFont.systemFont(ofSize: pointSize)
+      let attrs: [NSAttributedString.Key: Any] = [.font: font]
+      let attributed = NSAttributedString(string: self, attributes: attrs)
+      let measured = attributed.size()
+      let size = NSSize(
+        width: ceil(measured.width),
+        height: ceil(measured.height)
+      )
+      let image = NSImage(size: size)
+      image.lockFocus()
+      attributed.draw(
+        with: NSRect(origin: .zero, size: size),
+        options: [.usesLineFragmentOrigin]
+      )
+      image.unlockFocus()
+      image.isTemplate = false
+      return image
+    }
+  }
+#endif

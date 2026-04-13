@@ -176,6 +176,19 @@ extension ChatView {
           name: .chatViewShouldScrollToBottom,
           object: ["channelId": vm.channelId]
         )
+        if case .reply = inputVM.messageAction {
+          #if os(iOS)
+            properties.showPhotosPicker = false
+            properties.showFilePicker = false
+            properties.showEmojiPicker = false
+            isFocused = true
+          #elseif os(macOS)
+            NotificationCenter.default.post(
+              name: .inputBarShouldFocus,
+              object: ["channelId": vm.channelId]
+            )
+          #endif
+        }
       }
       .onChange(of: inputVM.uploadItems.count) { old, new in
         guard new > old else { return }

@@ -191,6 +191,16 @@ import SwiftUIX
 
           textView.autoresizingMask = [.width]
 
+          context.coordinator.focusObserver = NotificationCenter.default
+            .addObserver(
+              forName: .inputBarShouldFocus,
+              object: nil,
+              queue: .main
+            ) { [weak textView] _ in
+              guard let tv = textView, let window = tv.window else { return }
+              window.makeFirstResponder(tv)
+            }
+
           return scrollView
         }
 
@@ -299,9 +309,16 @@ import SwiftUIX
           var parent: _TextView
           var vm: InputVM?
           weak var textView: NSTextView?
+          var focusObserver: NSObjectProtocol?
 
           init(_ parent: _TextView) {
             self.parent = parent
+          }
+
+          deinit {
+            if let observer = focusObserver {
+              NotificationCenter.default.removeObserver(observer)
+            }
           }
 
           func textDidChange(_ notification: Notification) {

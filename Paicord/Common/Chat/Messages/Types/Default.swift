@@ -46,7 +46,11 @@ extension MessageCell {
       let name =
         ref.member?.nick ?? ref.author?.global_name ?? ref.author?.username
         ?? "Unknown"
-      let content = ref.content
+      let users = GatewayStore.shared.user.users
+      let content = ref.content.resolvingDiscordMentions(
+        users: users,
+        guildStore: channelStore.guildStore
+      )
       return (name: "\(mention)\(name)", content: content)
     }
 
