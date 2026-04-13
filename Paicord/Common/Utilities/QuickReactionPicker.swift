@@ -41,7 +41,7 @@ struct QuickReactionPicker: View {
       if let onMore {
         ReactionButton(
           label: Image(systemName: "plus")
-            .font(.system(size: 14, weight: .semibold))
+            .font(.subheadline.weight(.semibold))
             .foregroundStyle(.secondary),
           delay: Double(emojis.count) * 0.025,
           appeared: appeared,

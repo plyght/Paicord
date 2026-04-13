@@ -35,7 +35,7 @@ struct MFASheet: View {
               } label: {
                 userFriendlyName(for: method.type)
                   .frame(maxWidth: .infinity)
-                  .padding(10)
+                  .padding(Spacing.medium)
                   .background(theme.common.primaryButton)
                   .clipShape(.rounded)
                   .font(.title3)
@@ -49,7 +49,7 @@ struct MFASheet: View {
               .transition(.offset(x: 100).combined(with: .opacity))
           }
         }
-        .padding(25)
+        .padding(Spacing.xxLarge)
       }
 
       VStack {
@@ -61,7 +61,7 @@ struct MFASheet: View {
         .foregroundStyle(.secondary)
       }
     }
-    .padding(.top, 15)
+    .padding(.top, Spacing.large)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(theme.common.primaryBackground)
     .overlay(alignment: .topLeading) {
@@ -72,7 +72,7 @@ struct MFASheet: View {
         } label: {
           // chevron left
           Image(systemName: "chevron.left")
-            .padding(5)
+            .padding(Spacing.small)
             .background(theme.common.primaryButtonBackground)
             .clipShape(.circle)
         }
@@ -159,12 +159,12 @@ struct SixDigitInput: View {
   @FocusState var textfield
 
   var body: some View {
-    HStack(spacing: 10) {
+    HStack(spacing: Spacing.medium) {
       ForEach(0..<6, id: \.self) { index in
         ZStack {
           let prevCharacter = character(at: index - 1)
           let character = character(at: index)
-          RoundedRectangle(cornerRadius: 8)
+          RoundedRectangle(cornerRadius: Radius.small)
             .stroke(
               (textfield && enabled)
                 ? (character.isEmpty && !prevCharacter.isEmpty

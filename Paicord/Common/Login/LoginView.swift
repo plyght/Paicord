@@ -126,7 +126,7 @@ struct LoginForm: View {
   var size: CGSize?
 
   var body: some View {
-    HStack(spacing: 20) {
+    HStack(spacing: Spacing.xLarge) {
       VStack {
         Text("Welcome Back!")
           .font(.largeTitle)
@@ -184,7 +184,7 @@ struct LoginForm: View {
         VStack {
           // qr code url
           if let user = viewModel.raUser {
-            VStack(spacing: 15) {
+            VStack(spacing: Spacing.large) {
               Profile.Avatar(member: nil, user: user)
                 .frame(maxWidth: 100)
 
@@ -206,7 +206,7 @@ struct LoginForm: View {
             .transition(.blurReplace)
           } else if let fingerprint = viewModel.raFingerprint {
             let url = "https://discord.com/ra/" + fingerprint
-            VStack(spacing: 15) {
+            VStack(spacing: Spacing.large) {
               QRCodeView(data: url)
                 .clipShape(.rect(cornerSize: .init(4), style: .continuous))
                 .frame(width: 150, height: 150)

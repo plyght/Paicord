@@ -19,6 +19,34 @@ private let attachmentDebugLog = os.Logger(
   category: "Attachments"
 )
 
+private final class ThumbhashImageCache {
+  static let shared = ThumbhashImageCache()
+  #if os(macOS)
+    private let cache = NSCache<NSString, NSImage>()
+  #else
+    private let cache = NSCache<NSString, UIImage>()
+  #endif
+  private init() { cache.countLimit = 512 }
+
+  #if os(macOS)
+    func image(for placeholder: String) -> NSImage? {
+      if let hit = cache.object(forKey: placeholder as NSString) { return hit }
+      guard let data = Data(base64Encoded: placeholder), data.count >= 5,
+            let img = thumbHashToImage(hash: data) else { return nil }
+      cache.setObject(img, forKey: placeholder as NSString)
+      return img
+    }
+  #else
+    func image(for placeholder: String) -> UIImage? {
+      if let hit = cache.object(forKey: placeholder as NSString) { return hit }
+      guard let data = Data(base64Encoded: placeholder), data.count >= 5,
+            let img = thumbHashToImage(hash: data) else { return nil }
+      cache.setObject(img, forKey: placeholder as NSString)
+      return img
+    }
+  #endif
+}
+
 #if canImport(AppKit)
   import AppKit
 #endif
@@ -114,9 +142,6 @@ extension MessageCell {
         let ratio = attachment.aspectRatio ?? (maxWidth / maxHeight)
         let width = min(maxWidth, maxHeight * ratio)
         let height = width / ratio
-        let _: Void = attachmentDebugLog.debug(
-          "AttachmentSizedView.body w=\(attachment.width ?? -1, privacy: .public) h=\(attachment.height ?? -1, privacy: .public) ratio=\(ratio, privacy: .public) frame=\(width, privacy: .public)x\(height, privacy: .public)"
-        )
         content
           .aspectRatio(ratio, contentMode: .fit)
           .clipShape(.rounded)
@@ -167,17 +192,8 @@ extension MessageCell {
 
         @ViewBuilder
         private var placeholderView: some View {
-          let _: Void = {
-            let ph = attachment.placeholder ?? "<nil>"
-            let decoded = attachment.placeholder.flatMap { Data(base64Encoded: $0) }
-            attachmentDebugLog.debug(
-              "placeholderView: placeholder=\(ph, privacy: .public) decodedBytes=\(decoded?.count ?? -1, privacy: .public)"
-            )
-          }()
           if let placeholder = attachment.placeholder,
-            let data = Data(base64Encoded: placeholder),
-            data.count >= 5,
-            let img = thumbHashToImage(hash: data)
+            let img = ThumbhashImageCache.shared.image(for: placeholder)
           {
             #if os(macOS)
               Image(nsImage: img)
@@ -200,9 +216,6 @@ extension MessageCell {
         }
 
         var body: some View {
-          let _: Void = attachmentDebugLog.debug(
-            "ImageView.body type=\(String(describing: attachment.type), privacy: .public) pxSize=\(self.thumbnailPixelSize.width, privacy: .public)x\(self.thumbnailPixelSize.height, privacy: .public) url=\(attachment.proxyurl, privacy: .public)"
-          )
           if attachment.type == .gif {
             AnimatedImage(url: URL(string: attachment.proxyurl)) {
               placeholderView

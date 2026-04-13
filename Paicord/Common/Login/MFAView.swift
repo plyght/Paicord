@@ -71,10 +71,10 @@ struct MFAView: View {
               .transition(.offset(x: 100).combined(with: .opacity))
           }
         }
-        .padding(25)
+        .padding(Spacing.xxLarge)
       }
     }
-    .padding(.top, 15)
+    .padding(.top, Spacing.large)
     .minHeight(200)
     .maxWidth(.infinity)
     .overlay(alignment: .topLeading) {

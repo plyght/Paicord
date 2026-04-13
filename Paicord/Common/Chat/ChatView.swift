@@ -280,12 +280,12 @@ private struct ChatScrollNearBottomTracker: ViewModifier {
   @Binding var isNearBottom: Bool
   func body(content: Content) -> some View {
     if #available(iOS 18.0, macOS 15.0, *) {
-      content.onScrollGeometryChange(for: Bool.self) { geo in
-        let distanceFromBottom =
-          geo.contentSize.height
+      content.onScrollGeometryChange(for: CGFloat.self) { geo in
+        geo.contentSize.height
           - (geo.contentOffset.y + geo.containerSize.height)
-        return distanceFromBottom < 120
-      } action: { _, newValue in
+      } action: { _, distanceFromBottom in
+        let threshold: CGFloat = isNearBottom ? 200 : 120
+        let newValue = distanceFromBottom < threshold
         if isNearBottom != newValue { isNearBottom = newValue }
       }
     } else {

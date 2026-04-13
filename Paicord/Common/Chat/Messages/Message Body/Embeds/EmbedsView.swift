@@ -129,7 +129,7 @@ extension MessageCell {
                 .scaledToFill()
                 .frame(width: 72, height: 72)
                 .clipped()
-                .cornerRadius(6)
+                .clipShape(.rect(cornerRadius: Radius.small))
                 .id("embed-thumbnail-\(url.description)")
             }
           }
@@ -413,7 +413,7 @@ extension MessageCell {
         }
         .aspectRatio(350 / 80, contentMode: .fit)
         .maxWidth(350)
-        .clipShape(.rect(cornerRadius: 14))
+        .clipShape(.rect(cornerRadius: Radius.large))
       }
 
       @ViewBuilder
@@ -426,7 +426,7 @@ extension MessageCell {
         }
         .aspectRatio(1, contentMode: .fit)
         .maxWidth(350)
-        .clipShape(.rect(cornerRadius: 14))
+        .clipShape(.rect(cornerRadius: Radius.large))
       }
 
       @ViewBuilder
@@ -439,7 +439,7 @@ extension MessageCell {
         }
         .aspectRatio(660 / 170, contentMode: .fit)
         .maxWidth(550)
-        .clipShape(.rect(cornerRadius: 14))
+        .clipShape(.rect(cornerRadius: Radius.large))
       }
 
       @ViewBuilder
@@ -452,7 +452,7 @@ extension MessageCell {
         }
         .aspectRatio(660 / 450, contentMode: .fit)
         .maxWidth(550)
-        .clipShape(.rect(cornerRadius: 14))
+        .clipShape(.rect(cornerRadius: Radius.large))
       }
 
       enum SpecialLinkType {

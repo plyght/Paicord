@@ -155,7 +155,7 @@ struct QuickSwitcherView: View {
 
   @State var contentSize: CGSize = .zero
 
-  private let cornerRadius: CGFloat = 14
+  private let cornerRadius: CGFloat = Radius.large
 
   @State var focusedRow: Int? = nil
   @State var scrolledRow: Int? = nil

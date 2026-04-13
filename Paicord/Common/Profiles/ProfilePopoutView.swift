@@ -289,7 +289,7 @@ struct ProfilePopoutView: View {
         }
       }
       .frame(width: 48, height: 48)
-      .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+      .clipShape(RoundedRectangle(cornerRadius: Radius.medium, style: .continuous))
 
       Text(mg.nick ?? guild?.name ?? "Unknown")
         .font(.caption2)

@@ -360,7 +360,7 @@ extension ChatView {
           } label: {
             Image(systemName: "plus")
               .imageScale(.large)
-              .padding(7.5)
+              .padding(Spacing.standard)
               .background(.background.secondary.opacity(0.8))
               .clipShape(.circle)
               .rotationEffect(.degrees(45))
@@ -402,7 +402,7 @@ extension ChatView {
           } label: {
             Image(systemName: "plus")
               .imageScale(.large)
-              .padding(7.5)
+              .padding(Spacing.standard)
               .background(.background.secondary.opacity(0.8))
               .clipShape(.circle)
           }
@@ -428,7 +428,7 @@ extension ChatView {
         } label: {
           Image(systemName: "plus")
             .imageScale(.large)
-            .padding(7.5)
+            .padding(Spacing.standard)
             .glassEffect(.regular.interactive(), in: .circle)
         }
         .menuStyle(.button)
@@ -580,7 +580,7 @@ extension ChatView {
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
         .background(
-          RoundedRectangle(cornerRadius: 10)
+          RoundedRectangle()
             .fill(selected ? Color.accentColor.opacity(0.25) : .clear)
         )
       }

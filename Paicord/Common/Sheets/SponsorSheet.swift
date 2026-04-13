@@ -122,7 +122,7 @@ private struct SponsorSheetModifier: ViewModifier {
               .opacity(0)
             }
           }
-          .padding(.horizontal, 30)
+          .padding(.horizontal, Spacing.xLarge)
           .onTapGesture {
             trigger = false
           }
@@ -130,9 +130,9 @@ private struct SponsorSheetModifier: ViewModifier {
           Text("Enjoying Paicord?")
             .font(.title)
             .fontWeight(.semibold)
-            .padding(.vertical, 8)
+            .padding(.vertical, Spacing.standard)
 
-          VStack(spacing: 12) {
+          VStack(spacing: Spacing.medium) {
             Text(
               "Paicord is free and open source software. If you enjoy using Paicord, consider sponsoring its development to help support ongoing improvements and new features!"
             )
@@ -185,11 +185,11 @@ private struct SponsorSheetModifier: ViewModifier {
           .controlSize(.large)
           .font(.title3)
           .fontWeight(.semibold)
-          .padding([.horizontal, .top], 5)
+          .padding([.horizontal, .top], Spacing.compact)
         }
         .maxWidth(.infinity)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
+        .padding(.horizontal, Spacing.xLarge)
+        .padding(.vertical, Spacing.medium)
         .background(.thinMaterial)
       }
       .task(id: trigger) {

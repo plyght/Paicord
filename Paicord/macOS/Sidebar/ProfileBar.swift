@@ -65,7 +65,7 @@ struct ProfileBar: View {
                     .frame(width: 16, height: 16)
                 } else {
                   Text(emoji.name)
-                    .font(.system(size: 14))
+                    .font(.subheadline)
                 }
               }
 
@@ -255,7 +255,7 @@ struct ProfileBar: View {
                     .frame(width: 16, height: 16)
                 } else {
                   Text(emoji.name)
-                    .font(.system(size: 14))
+                    .font(.subheadline)
                 }
               }
               if let state = status.state, !state.isEmpty {
