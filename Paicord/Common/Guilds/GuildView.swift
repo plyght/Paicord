@@ -29,7 +29,7 @@ struct GuildView: View {
   }
 
   var body: some View {
-    ScrollView {
+    ScrollFadeMask {
       LazyVStack(spacing: 0) {
         Utils.GuildBannerURL(guild: guild, animated: true) { bannerURL in
           if let bannerURL {

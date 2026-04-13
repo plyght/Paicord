@@ -23,7 +23,7 @@ struct DMsView: View {
   @Environment(\.userInterfaceIdiom) var idiom
   @Environment(\.theme) var theme
   var body: some View {
-    ScrollView {
+    ScrollFadeMask {
       if idiom == .phone {
         VStack(spacing: 0) {
           VStack(alignment: .leading) {

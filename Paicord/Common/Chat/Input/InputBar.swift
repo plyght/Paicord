@@ -133,10 +133,14 @@ extension ChatView {
           .padding(.top, 4)
 
           TypingIndicatorBar(vm: vm)
-            .background(.bar)
+            #if os(iOS)
+              .background(.bar)
+            #endif
             .padding(.top, -18)  // away from bar
         }
-        .background(.bar)
+        #if os(iOS)
+          .background(.bar)
+        #endif
       }
       #if os(iOS)
         .animation(properties.animation, value: animatedKeyboardHeight)
@@ -399,8 +403,7 @@ extension ChatView {
           Image(systemName: "plus")
             .imageScale(.large)
             .padding(7.5)
-            .background(.background.secondary.opacity(0.8))
-            .clipShape(.circle)
+            .glassEffect(.regular.interactive(), in: .circle)
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
@@ -451,8 +454,12 @@ extension ChatView {
         .tint(.secondary)
         .padding(.vertical, 6)
       }
-      .background(.background.secondary.opacity(0.8))
-      .clipShape(.rect(cornerRadius: 18))
+      #if os(iOS)
+        .background(.background.secondary.opacity(0.8))
+        .clipShape(.rect(cornerRadius: 18))
+      #else
+        .glassEffect(.regular.interactive())
+      #endif
 
       #if os(iOS)
         if inputVM.content.isEmpty == false
